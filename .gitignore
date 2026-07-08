@@ -1,0 +1,46 @@
+# ==========================
+# Environment files
+# ==========================
+Backend/.env
+Frontend/.env
+
+# ==========================
+# Dependencies
+# ==========================
+Backend/node_modules/
+Frontend/node_modules/
+
+# ==========================
+# Build output
+# ==========================
+Frontend/dist/
+Frontend/dist-ssr/
+
+# ==========================
+# Logs
+# ==========================
+Frontend/logs/
+Frontend/*.log
+Frontend/npm-debug.log*
+Frontend/yarn-debug.log*
+Frontend/yarn-error.log*
+Frontend/pnpm-debug.log*
+Frontend/lerna-debug.log*
+
+# ==========================
+# Local files
+# ==========================
+Frontend/*.local
+
+# ==========================
+# IDEs & OS files
+# ==========================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
