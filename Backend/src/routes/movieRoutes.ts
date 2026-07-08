@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { fetchTrendingMovies } from '../controller/movieController';
+import { fetchTrendingMovies } from '../controllers/movieController';
 
 const router = Router();
 
