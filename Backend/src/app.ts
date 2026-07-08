@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import movieRoutes from './routes/movieRoutes';
 
 const app = express();
 dotenv.config();
@@ -22,4 +23,5 @@ app.get('/', (_req, res) => {
     });
 });
 
+app.use("/api/movies", movieRoutes)
 export default app; 
