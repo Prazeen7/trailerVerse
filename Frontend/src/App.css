@@ -182,3 +182,26 @@
     border-right-color: var(--border);
   }
 }
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    overflow: hidden;
+    height: 100%;
+    background: #000;
+}
+
+/* Hide scrollbar */
+::-webkit-scrollbar {
+    display: none;
+}
+
+/* Prevent text selection */
+.home-container {
+    user-select: none;
+    -webkit-user-select: none;
+}
