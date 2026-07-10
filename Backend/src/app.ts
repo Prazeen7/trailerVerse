@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import movieRoutes from './routes/movieRoutes';
+import tvRoutes from './routes/tvRoutes';
 import youtubeRoutes from "./routes/youtubeRoutes";
 
 const app = express();
@@ -15,8 +16,7 @@ app.use(
     })
 );
 
-app.use(express.json());
-
+app.use(express.json());   
 app.get('/', (_req, res) => {
     res.json({
         success: true,
@@ -26,4 +26,5 @@ app.get('/', (_req, res) => {
 
 app.use("/api/movies", movieRoutes)
 app.use("/api/trailer", youtubeRoutes);
+app.use("/api/tv", tvRoutes);
 export default app; 

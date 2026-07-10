@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import api from "../api/api";
+import Loader from "./TrailerLoader";
 
 interface Props {
     movie: any;
@@ -10,6 +11,7 @@ interface Props {
     totalMovies?: number;
     isMuted?: boolean;
     onToggleSound?: () => void;
+    contentType?: "movie" | "tv";
 }
 
 export default function TrailerCard({
@@ -20,7 +22,8 @@ export default function TrailerCard({
     currentIndex = 0,
     totalMovies = 1,
     isMuted = false,
-    onToggleSound
+    onToggleSound,
+    contentType = "movie",
 }: Props) {
     const [videoKey, setVideoKey] = useState("");
     const [showControls, setShowControls] = useState(true);
@@ -35,11 +38,20 @@ export default function TrailerCard({
     const retryCount = useRef(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const hasLoopedRef = useRef(false);
+    const [isPaused, setIsPaused] = useState(false);
+    const [showPlaybackIcon, setShowPlaybackIcon] = useState(false);
+    const playbackTimeout = useRef<number | null>(null);
+    const touchStartY = useRef(0);
+    const touchStartX = useRef(0);
+    const touchStartTime = useRef(0);
+
+    const isTouchDevice =
+        "ontouchstart" in window || navigator.maxTouchPoints > 0;
 
     useEffect(() => {
         const fetchTrailer = async () => {
             try {
-                const response = await api.get(`/trailer/movie/${movie.id}`);
+                const response = await api.get(`/trailer/${contentType}/${movie.id}`);
                 setVideoKey(response.data.data.key);
             } catch (error) {
                 // Silently handle error
@@ -57,51 +69,21 @@ export default function TrailerCard({
         return `https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&loop=1&controls=0&color=white&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&disablekb=1&cc_load_policy=3&iv_load_policy=3&playlist=${videoKey}&origin=${window.location.origin}&fs=0&showinfo=0&autohide=1&fs=0&modestbranding=1&showsearch=0&showinfo=0&autohide=1&fs=0`;
     };
 
-    // Initialize iframe only once when video key changes
-    useEffect(() => {
-        if (videoKey && iframeRef.current && !initializedRef.current) {
-            initializedRef.current = true;
-            setIframeReady(false);
-            setIsLoading(true);
-            setVideoPlaying(false);
-            setLoadError(false);
-            playAttempted.current = false;
-            retryCount.current = 0;
-            hasLoopedRef.current = false;
-            iframeRef.current.src = getIframeSrc();
-        }
-    }, [videoKey]);
 
     // Handle iframe load event
     const handleIframeLoad = () => {
         setIframeReady(true);
         setIsLoading(false);
-
-        if (isActive) {
-            setTimeout(() => {
-                sendCommand('playVideo');
-            }, 300);
-
-            if (isMuted) {
-                setTimeout(() => {
-                    sendCommand('mute');
-                }, 400);
-            } else {
-                setTimeout(() => {
-                    sendCommand('unMute');
-                }, 600);
-                setTimeout(() => {
-                    sendCommand('unMute');
-                }, 1000);
-                setTimeout(() => {
-                    sendCommand('unMute');
-                }, 1500);
-            }
-
-            setTimeout(() => {
-                setVideoPlaying(true);
-            }, 1200);
-        }
+        setTimeout(() => {
+            iframeRef.current?.contentWindow?.postMessage(
+                JSON.stringify({
+                    event: "listening",
+                    id: movie.id,
+                    channel: "widget",
+                }),
+                "*"
+            );
+        }, 500);
     };
 
     // Handle iframe errors
@@ -114,9 +96,6 @@ export default function TrailerCard({
             setTimeout(() => {
                 setLoadError(false);
                 setIsLoading(true);
-                if (iframeRef.current) {
-                    iframeRef.current.src = getIframeSrc();
-                }
             }, 2000);
         }
     };
@@ -140,20 +119,6 @@ export default function TrailerCard({
         }
     };
 
-    // Control play/pause based on isActive
-    useEffect(() => {
-        if (iframeReady && !loadError) {
-            if (isActive) {
-                setTimeout(() => {
-                    sendCommand('playVideo');
-                }, 100);
-            } else {
-                sendCommand('pauseVideo');
-                setVideoPlaying(false);
-            }
-        }
-    }, [isActive, iframeReady, loadError]);
-
     // Force captions off. cc_load_policy=0 in the embed URL isn't
     // enough on its own - if the viewer has captions saved as "on" in
     // their YouTube account/browser, YouTube restores that preference
@@ -175,52 +140,6 @@ export default function TrailerCard({
         }
     }, [iframeReady, loadError]);
 
-    // Handle mute/unmute from global state
-    useEffect(() => {
-        if (iframeReady && isActive && !loadError) {
-            if (isMuted) {
-                sendCommand('mute');
-            } else {
-                sendCommand('unMute');
-                // Try multiple times to ensure unmute works
-                setTimeout(() => {
-                    sendCommand('unMute');
-                }, 300);
-                setTimeout(() => {
-                    sendCommand('unMute');
-                }, 600);
-            }
-        }
-    }, [isMuted, iframeReady, isActive, loadError]);
-
-    // Force play for first video when it becomes ready
-    useEffect(() => {
-        if (iframeReady && isActive && !playAttempted.current && !loadError) {
-            playAttempted.current = true;
-
-            setTimeout(() => {
-                sendCommand('playVideo');
-            }, 200);
-
-            setTimeout(() => {
-                sendCommand('playVideo');
-            }, 500);
-
-            if (!isMuted) {
-                setTimeout(() => {
-                    sendCommand('unMute');
-                }, 700);
-                setTimeout(() => {
-                    sendCommand('unMute');
-                }, 1200);
-            }
-
-            setTimeout(() => {
-                setVideoPlaying(true);
-            }, 1200);
-        }
-    }, [iframeReady, isActive, loadError]);
-
 
     useEffect(() => {
         if (!iframeReady || !isActive || loadError) return;
@@ -232,19 +151,59 @@ export default function TrailerCard({
 
             try {
                 const data = JSON.parse(event.data);
-                // YouTube sends info about video state changes
-                if (data.event === 'onStateChange' && data.info === 0) {
-                    // State 0 means video ended
-                    // Restart it immediately to prevent end screen
-                    sendCommand('playVideo');
-                    // Also seek to beginning just in case
-                    sendCommand('seekTo', [0]);
+                if (data.event === "onReady") {
+                    sendCommand("playVideo");
 
-                    // If the video didn't restart properly, try again
+                    if (isMuted) {
+                        sendCommand("mute");
+                    } else {
+                        sendCommand("unMute");
+                    }
+
                     setTimeout(() => {
-                        sendCommand('playVideo');
-                        sendCommand('seekTo', [0]);
+                        sendCommand("playVideo");
                     }, 100);
+
+                    setTimeout(() => {
+                        sendCommand("playVideo");
+                    }, 500);
+
+                    setTimeout(() => {
+                        sendCommand("playVideo");
+                    }, 1000);
+                }
+
+                // YouTube sends info about video state changes
+                // Keep React state in sync with YouTube player
+                if (data.event === "onStateChange") {
+                    switch (data.info) {
+                        case 1: // Playing
+                            setIsPaused(false);
+                            setVideoPlaying(true);
+                            break;
+
+                        case 2: // Paused
+                            setIsPaused(true);
+                            break;
+
+                        case 0: // Ended
+                            setIsPaused(false);
+
+                            sendCommand("seekTo", [0]);
+                            sendCommand("playVideo");
+
+                            setTimeout(() => {
+                                sendCommand("seekTo", [0]);
+                                sendCommand("playVideo");
+                            }, 100);
+
+                            break;
+                    }
+                }
+
+                if (data.event === "onError") {
+                    console.log("YouTube Error:", data.info);
+                    console.log("YT ERROR", movie.id);
                 }
             } catch (e) {
                 // Not a JSON message or not relevant
@@ -256,6 +215,24 @@ export default function TrailerCard({
             window.removeEventListener('message', handleMessage);
         };
     }, [iframeReady, isActive, loadError, sendCommand]);
+
+
+    useEffect(() => {
+        if (!iframeReady || loadError) return;
+
+        if (isActive) {
+            sendCommand("playVideo");
+
+            if (isMuted) {
+                sendCommand("mute");
+            } else {
+                sendCommand("unMute");
+            }
+        } else {
+            sendCommand("mute");
+            sendCommand("pauseVideo");
+        }
+    }, [isActive, iframeReady, isMuted, loadError]);
 
     // Hide controls after 3 seconds of inactivity
     useEffect(() => {
@@ -417,59 +394,17 @@ export default function TrailerCard({
 
     // Handle sound toggle
     const handleToggleSound = (e?: React.MouseEvent) => {
-        if (e) {
-            e.stopPropagation();
-            e.preventDefault();
-        }
-        if (onToggleSound) {
-            onToggleSound();
-        }
-    };
+        e?.stopPropagation();
+        e?.preventDefault();
 
-    // Loading spinner component
-    const LoadingSpinner = () => (
-        <div
-            style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                zIndex: 5,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "16px",
-            }}
-        >
-            <div
-                style={{
-                    width: "50px",
-                    height: "50px",
-                    border: "4px solid rgba(255,255,255,0.1)",
-                    borderTop: "4px solid #ffffff",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
-                }}
-            />
-            <p
-                style={{
-                    color: "rgba(255,255,255,0.7)",
-                    fontSize: "14px",
-                    fontFamily: "Arial, sans-serif",
-                }}
-            >
-                Loading trailer...
-            </p>
-            <style>
-                {`
-                    @keyframes spin {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                `}
-            </style>
-        </div>
-    );
+        if (isMuted) {
+            sendCommand("unMute");
+        } else {
+            sendCommand("mute");
+        }
+
+        onToggleSound?.();
+    };
 
     // Error fallback component
     const ErrorFallback = () => (
@@ -523,12 +458,10 @@ export default function TrailerCard({
                     Video unavailable
                 </p>
                 <button
-                    onClick={() => {
+                    onClick={(e) => {
+                        e.stopPropagation();
                         setLoadError(false);
                         setIsLoading(true);
-                        if (iframeRef.current) {
-                            iframeRef.current.src = getIframeSrc();
-                        }
                     }}
                     style={{
                         padding: "8px 24px",
@@ -547,18 +480,71 @@ export default function TrailerCard({
         </div>
     );
 
+    const togglePlayback = () => {
+        if (!iframeReady || isLoading || loadError) return;
+
+        if (isPaused) {
+            sendCommand("playVideo");
+        } else {
+            sendCommand("pauseVideo");
+        }
+
+        setIsPaused(prev => !prev);
+
+        setShowPlaybackIcon(true);
+
+        if (playbackTimeout.current) {
+            clearTimeout(playbackTimeout.current);
+        }
+
+        playbackTimeout.current = window.setTimeout(() => {
+            setShowPlaybackIcon(false);
+        }, 500);
+    };
+
+    const handleTouchStartPlayback = (e: React.TouchEvent) => {
+        touchStartY.current = e.touches[0].clientY;
+        touchStartX.current = e.touches[0].clientX;
+        touchStartTime.current = Date.now();
+
+        handleShowControls();
+    };
+
+    const handleTouchEndPlayback = (e: React.TouchEvent) => {
+        const endY = e.changedTouches[0].clientY;
+        const endX = e.changedTouches[0].clientX;
+
+        const dy = Math.abs(endY - touchStartY.current);
+        const dx = Math.abs(endX - touchStartX.current);
+
+        const duration = Date.now() - touchStartTime.current;
+
+        const TAP_DISTANCE = 10;
+        const TAP_TIME = 250;
+
+        const isTap =
+            dx < TAP_DISTANCE &&
+            dy < TAP_DISTANCE &&
+            duration < TAP_TIME;
+
+        if (isTap) {
+            togglePlayback();
+        }
+    };
+
     return (
         <div
             className="trailer-root"
+            onClick={!isTouchDevice ? togglePlayback : undefined}
+            onTouchStart={handleTouchStartPlayback}
+            onTouchEnd={handleTouchEndPlayback}
             style={{
                 width: "100%",
                 position: "relative",
                 backgroundColor: "#000",
                 overflow: "hidden",
-                touchAction: "none",
             }}
             onMouseMove={handleShowControls}
-            onTouchStart={handleShowControls}
         >
             {/* Scoped responsive styles for the YouTube iframe crop */}
             <style>
@@ -625,11 +611,28 @@ export default function TrailerCard({
                             right: 44px !important;
                         }
                     }
+
+                    @keyframes playFade {
+    0% {
+        opacity: 0;
+        transform: scale(.7);
+    }
+
+    20% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.15);
+    }
+}
                 `}
             </style>
 
             {/* Loading Spinner */}
-            {isLoading && isActive && <LoadingSpinner />}
+            {isLoading && isActive && <Loader />}
 
             {/* Error Fallback */}
             {loadError && isActive && <ErrorFallback />}
@@ -657,7 +660,7 @@ export default function TrailerCard({
                         src={getIframeSrc()}
                         title="YouTube video player"
                         frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allow="autoplay; fullscreen"
                         allowFullScreen
                         onLoad={handleIframeLoad}
                         onError={handleIframeError}
@@ -688,7 +691,10 @@ export default function TrailerCard({
                         pointerEvents: showControls ? "auto" : "none",
                         userSelect: "none",
                     }}
-                    onClick={handleToggleSound}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleSound();
+                    }}
                     onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.3)";
                         e.currentTarget.style.transform = "scale(1.1)";
@@ -729,7 +735,10 @@ export default function TrailerCard({
                         alignItems: "center",
                         justifyContent: "center",
                     }}
-                    onClick={handleToggleFullscreen}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleFullscreen();
+                    }}
                     onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.3)";
                         e.currentTarget.style.transform = "scale(1.1)";
@@ -776,10 +785,10 @@ export default function TrailerCard({
                     }}
                 >
                     <h2 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "2px", lineHeight: 1.3 }}>
-                        {movie.title}
+                        {movie.title || movie.name}
                     </h2>
                     <p style={{ fontSize: "11px", opacity: 0.85 }}>
-                        ⭐ {movie.vote_average}/10
+                        ⭐ {movie.vote_average.toFixed(1)}/10
                     </p>
                 </div>
             )}
@@ -868,6 +877,37 @@ export default function TrailerCard({
                 </div>
             )}
 
+            {showPlaybackIcon && (
+                <div
+                    style={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        pointerEvents: "none",
+                        zIndex: 100,
+                    }}
+                >
+                    <div
+                        style={{
+                            width: 90,
+                            height: 90,
+                            borderRadius: "50%",
+                            background: "rgba(0,0,0,0.55)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            fontSize: 40,
+                            color: "#fff",
+                            animation: "playFade .5s ease",
+                        }}
+                    >
+                        {isPaused ? "▶" : "❚❚"}
+                    </div>
+                </div>
+            )}
+
             {/* Keyboard hint */}
             {isActive && showControls && !isLoading && !loadError && (
                 <div
@@ -889,5 +929,7 @@ export default function TrailerCard({
                 </div>
             )}
         </div>
+
+
     );
 }

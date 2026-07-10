@@ -5,3 +5,9 @@ export const getTrendingMovies = async () => {
 
     return response.data;
 }
+
+export const getPopularMovies = async (pid: string) => {
+    const response = await tmdb.get(`/movie/popular?&page=${pid}`);
+
+    return response.data;
+}

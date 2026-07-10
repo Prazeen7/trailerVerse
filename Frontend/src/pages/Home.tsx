@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import api from "../api/api";
 import TrailerCard from "../components/TrailerCard";
+import ContentToggle from "../components/ContentToggle";
 
 interface Movie {
     id: number;
@@ -10,154 +11,176 @@ interface Movie {
     release_date?: string;
 }
 
-function Banner({ visible, timer }: { visible: boolean; timer: number }) {
-    if (!visible) return null;
-
-    return (
-        <div
-            style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 200,
-                backgroundColor: "rgba(255, 59, 48, 0.95)",
-                color: "white",
-                padding: "14px 24px",
-                boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
-                backdropFilter: "blur(10px)",
-                borderBottom: "2px solid rgba(255,255,255,0.1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "16px",
-                animation: "slideDown 0.3s ease",
-            }}
-        >
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
-                <div style={{ fontSize: "20px" }}>⏳</div>
-                <div>
-                    <div style={{ fontSize: "14px", fontWeight: "600", marginBottom: "2px" }}>
-                        Slow down!
-                    </div>
-                    <div style={{ fontSize: "13px", opacity: 0.9 }}>
-                        Please wait {timer} second{timer !== 1 ? 's' : ''} before continuing.
-                    </div>
-                </div>
-            </div>
-            <div
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    flexShrink: 0,
-                }}
-            >
-                <div
-                    style={{
-                        fontSize: "20px",
-                        fontWeight: "700",
-                        minWidth: "40px",
-                        textAlign: "center",
-                        backgroundColor: "rgba(255,255,255,0.15)",
-                        padding: "4px 12px",
-                        borderRadius: "8px",
-                        fontVariantNumeric: "tabular-nums",
-                    }}
-                >
-                    {timer}s
-                </div>
-                <div
-                    style={{
-                        width: "80px",
-                        height: "4px",
-                        backgroundColor: "rgba(255,255,255,0.2)",
-                        borderRadius: "2px",
-                        overflow: "hidden",
-                    }}
-                >
-                    <div
-                        style={{
-                            width: `${(timer / 10) * 100}%`,
-                            height: "100%",
-                            backgroundColor: "white",
-                            borderRadius: "2px",
-                            transition: "width 1s linear",
-                        }}
-                    />
-                </div>
-            </div>
-            <style>
-                {`
-                    @keyframes slideDown {
-                        from { transform: translateY(-100%); opacity: 0; }
-                        to { transform: translateY(0); opacity: 1; }
-                    }
-                `}
-            </style>
-        </div>
-    );
-}
-
 export default function Home() {
-    const [moviesWithTrailers, setMoviesWithTrailers] = useState<Movie[]>([]);
-    const [currentIndex, setCurrentIndex] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isMuted, setIsMuted] = useState(false);
+    const [isMuted, setIsMuted] = useState(() => {
+        return window.innerWidth <= 768; // true on mobile, false on desktop
+    });
     const [loadedIndices, setLoadedIndices] = useState<Set<number>>(new Set([0]));
     const [isTransitioning, setIsTransitioning] = useState(false);
-    const [bannerVisible, setBannerVisible] = useState(false);
-    const [bannerTimer, setBannerTimer] = useState(10);
     const containerRef = useRef<HTMLDivElement>(null);
-    const isScrolling = useRef(false);
     const touchStartY = useRef(0);
     const touchStartTime = useRef(0);
-    const lastScrollTime = useRef(0);
-    const scrollCooldown = useRef(false);
-    const scrollLockRef = useRef(false);
-    const continuousScrollCount = useRef(0);
-    const continuousScrollTimer = useRef<number | null>(null);
-    const lockTimer = useRef<number | null>(null);
-    const isNavigating = useRef(false);
-    const isLocked = useRef(false);
-    const isTrackingRef = useRef(false);
-    const countdownIntervalRef = useRef<number | null>(null);
-    const lastScrollTimeRef = useRef<number>(0);
+    const [pid, setPid] = useState(1);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const fetchingMoreRef = useRef(false);
+    const pageRef = useRef(1);
+    const [contentType, setContentType] = useState<"movie" | "tv">("movie");
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [movieTrailers, setMovieTrailers] = useState<Movie[]>([]);
+    const [tvTrailers, setTvTrailers] = useState<Movie[]>([]);
+    const [movieIndex, setMovieIndex] = useState(0);
+    const [tvIndex, setTvIndex] = useState(0);
+    const [movieLoading, setMovieLoading] = useState(true);
+    const [tvLoading, setTvLoading] = useState(true);
+    const switchingRef = useRef(false);
 
-    // Fetch movies and check trailers
+    const PRELOAD_THRESHOLD = 10;
+    const currentIndex =
+        contentType === "movie"
+            ? movieIndex
+            : tvIndex;
+
+
+    const moviesWithTrailers =
+        contentType === "movie"
+            ? movieTrailers
+            : tvTrailers;
+
+    const isLoading =
+        contentType === "movie"
+            ? movieLoading
+            : tvLoading;
+
     useEffect(() => {
-        const fetchMoviesAndTrailers = async () => {
-            try {
-                setIsLoading(true);
+        if (
+            moviesWithTrailers.length > 0 &&
+            currentIndex >= moviesWithTrailers.length - PRELOAD_THRESHOLD &&
+            !fetchingMoreRef.current
+        ) {
+            fetchingMoreRef.current = true;
 
-                const moviesResponse = await api.get("/movies/trending");
-                const movies = moviesResponse.data.results;
+            const nextPage = pageRef.current + 1;
+            pageRef.current = nextPage;
 
-                const trailerChecks = movies.map(async (movie: Movie) => {
-                    try {
-                        const response = await api.get(`/trailer/movie/${movie.id}`);
-                        if (response.data && response.data.data && response.data.data.key) {
-                            return movie;
-                        }
-                    } catch (error) {
-                        // Movie doesn't have a trailer
-                    }
-                    return null;
-                });
+            fetchContent(nextPage, contentType).finally(() => {
+                fetchingMoreRef.current = false;
+            });
+        }
+    }, [currentIndex, moviesWithTrailers.length, contentType]);
 
-                const results = await Promise.all(trailerChecks);
-                const moviesWithTrailer = results.filter((movie): movie is Movie => movie !== null);
+    useEffect(() => {
+        if (!containerRef.current) return;
 
-                setMoviesWithTrailers(moviesWithTrailer);
-            } catch (error) {
-                console.error("Error fetching movies:", error);
-            } finally {
-                setIsLoading(false);
+        containerRef.current.style.transition =
+            "transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+
+        containerRef.current.style.transform =
+            `translateY(-${currentIndex * 100}dvh)`;
+    }, [contentType, currentIndex]);
+
+    const fetchContent = async (
+        page: number,
+        type: "movie" | "tv"
+    ) => {
+        try {
+            let items: any[] = [];
+            if (page === 1) {
+                if (type === "movie") {
+                    setMovieLoading(true);
+                } else {
+                    setTvLoading(true);
+                }
+            } else {
+                setIsFetchingMore(true);
             }
-        };
 
-        fetchMoviesAndTrailers();
-    }, []);
+            if (type === "movie") {
+                const response = await api.get(`/movies/popular/movie/${page}`);
+                items = response.data.results;
+            } else {
+                const response = await api.get(`/tv/popular/tv/${page}`);
+                items = response.data.results;
+            }
+
+            const trailerChecks = items.map(async (item: any) => {
+                try {
+                    const trailer = await api.get(`/trailer/${type}/${item.id}`);
+
+                    if (trailer.data?.data?.key) {
+                        return item;
+                    }
+                } catch {
+                    return null;
+                }
+
+                return null;
+            });
+
+            const results = await Promise.all(trailerChecks);
+
+            const itemsWithTrailer = results.filter(Boolean);
+
+            if (type === "movie") {
+                if (page === 1) {
+                    setMovieTrailers(itemsWithTrailer);
+                } else {
+                    setMovieTrailers(prev => {
+                        const merged = [...prev, ...itemsWithTrailer];
+
+                        return Array.from(
+                            new Map(merged.map(item => [item.id, item])).values()
+                        );
+                    });
+                }
+            } else {
+                if (page === 1) {
+                    setTvTrailers(itemsWithTrailer);
+                } else {
+                    setTvTrailers(prev => {
+                        const merged = [...prev, ...itemsWithTrailer];
+
+                        return Array.from(
+                            new Map(merged.map(item => [item.id, item])).values()
+                        );
+                    });
+                }
+            }
+        } finally {
+            if (type === "movie") {
+                setMovieLoading(false);
+            } else {
+                setTvLoading(false);
+            }
+            setIsFetchingMore(false);
+
+            if (initialLoading) {
+                setInitialLoading(false);
+            }
+        }
+    };
+
+    useEffect(() => {
+        pageRef.current = 1;
+
+        if (
+            contentType === "movie" &&
+            movieTrailers.length === 0
+        ) {
+            fetchContent(1, "movie");
+        }
+
+        if (
+            contentType === "tv" &&
+            tvTrailers.length === 0
+        ) {
+            fetchContent(1, "tv");
+        }
+
+    }, [
+        contentType,
+        movieTrailers.length,
+        tvTrailers.length
+    ]);
 
     // Manage loaded indices - keep previous 5, current, and next 5 (11 total)
     useEffect(() => {
@@ -188,198 +211,34 @@ export default function Home() {
         setIsMuted(!isMuted);
     };
 
-    // Clear all locks and timers
-    const clearAllTimers = () => {
-        if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-        }
-        if (lockTimer.current) {
-            clearTimeout(lockTimer.current);
-            lockTimer.current = null;
-        }
-        if (continuousScrollTimer.current) {
-            clearTimeout(continuousScrollTimer.current);
-            continuousScrollTimer.current = null;
-        }
-    };
-
-    // Lock scrolling for 10 seconds with countdown
-    const lockScrolling = () => {
-        // Prevent multiple locks
-        if (isLocked.current) return;
-
-        isLocked.current = true;
-        scrollLockRef.current = true;
-
-        // Clear any existing timers
-        clearAllTimers();
-
-        // Reset last scroll time
-        lastScrollTimeRef.current = 0;
-
-        // Show banner with timer
-        setBannerTimer(10);
-        setBannerVisible(true);
-
-        // Update countdown every second
-        countdownIntervalRef.current = setInterval(() => {
-            setBannerTimer(prev => {
-                const newTime = prev - 1;
-                if (newTime <= 0) {
-                    // Clear interval when timer reaches 0
-                    if (countdownIntervalRef.current) {
-                        clearInterval(countdownIntervalRef.current);
-                        countdownIntervalRef.current = null;
-                    }
-                    return 0;
-                }
-                return newTime;
-            });
-        }, 1000);
-
-        // Unlock after 10 seconds
-        lockTimer.current = setTimeout(() => {
-            // Clear the countdown interval
-            if (countdownIntervalRef.current) {
-                clearInterval(countdownIntervalRef.current);
-                countdownIntervalRef.current = null;
-            }
-
-            scrollLockRef.current = false;
-            isLocked.current = false;
-            continuousScrollCount.current = 0;
-            lastScrollTimeRef.current = 0; // Reset last scroll time
-
-            // Clear the continuous scroll timer
-            if (continuousScrollTimer.current) {
-                clearTimeout(continuousScrollTimer.current);
-                continuousScrollTimer.current = null;
-            }
-
-            // Hide banner when unlocked
-            setBannerVisible(false);
-            setBannerTimer(10);
-
-        }, 10000);
-    };
-
-    // Track continuous scrolling
-    const trackContinuousScroll = (source: string = 'unknown') => {
-        // Don't track if locked or already tracking
-        if (isLocked.current || scrollLockRef.current) {
-            return;
-        }
-
-        const now = Date.now();
-        const timeSinceLastScroll = now - lastScrollTimeRef.current;
-
-        // If more than 5 seconds have passed since last scroll, reset the count
-        if (timeSinceLastScroll > 5000) {
-            continuousScrollCount.current = 0;
-            if (continuousScrollTimer.current) {
-                clearTimeout(continuousScrollTimer.current);
-                continuousScrollTimer.current = null;
-            }
-        }
-
-        // Update last scroll time
-        lastScrollTimeRef.current = now;
-
-        // Increment count
-        continuousScrollCount.current += 1;
-
-        // Clear existing timer
-        if (continuousScrollTimer.current) {
-            clearTimeout(continuousScrollTimer.current);
-        }
-
-        // Set a timer to check for inactivity after 5 seconds
-        continuousScrollTimer.current = setTimeout(() => {
-            continuousScrollCount.current = 0;
-            continuousScrollTimer.current = null;
-        }, 5000);
-
-        // Check if we need to lock
-        if (continuousScrollCount.current >= 3 && !isLocked.current && !scrollLockRef.current) {
-            lockScrolling();
-            continuousScrollCount.current = 0;
-            if (continuousScrollTimer.current) {
-                clearTimeout(continuousScrollTimer.current);
-                continuousScrollTimer.current = null;
-            }
-        }
-    };
 
     // Navigation functions
     const goToNext = () => {
-        if (isLocked.current || scrollLockRef.current) {
-            return;
-        }
-        if (isScrolling.current || scrollCooldown.current || isTransitioning || isNavigating.current) {
-            return;
-        }
         if (currentIndex < moviesWithTrailers.length - 1) {
-            trackContinuousScroll('navigation');
             handleNavigation(currentIndex + 1);
         }
     };
 
     const goToPrevious = () => {
-        if (isLocked.current || scrollLockRef.current) {
-            return;
-        }
-        if (isScrolling.current || scrollCooldown.current || isTransitioning || isNavigating.current) {
-            return;
-        }
         if (currentIndex > 0) {
-            trackContinuousScroll('navigation');
             handleNavigation(currentIndex - 1);
         }
     };
 
     const handleNavigation = (index: number) => {
-        if (isLocked.current || scrollLockRef.current || isScrolling.current || scrollCooldown.current || isTransitioning || isNavigating.current) {
-            return;
+        console.log("Navigate", contentType, index);
+        if (switchingRef.current) return;
+
+        if (contentType === "movie") {
+            setMovieIndex(index);
+        } else {
+            setTvIndex(index);
         }
-
-        isNavigating.current = true;
-        isScrolling.current = true;
-        setIsTransitioning(true);
-        scrollCooldown.current = true;
-
-        setCurrentIndex(index);
-
-        const container = containerRef.current;
-        if (container) {
-            container.style.transition = "transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94)";
-            container.style.transform = `translateY(-${index * 100}dvh)`;
-        }
-
-        setTimeout(() => {
-            isScrolling.current = false;
-        }, 700);
-
-        setTimeout(() => {
-            setIsTransitioning(false);
-        }, 800);
-
-        setTimeout(() => {
-            scrollCooldown.current = false;
-        }, 1000);
-
-        setTimeout(() => {
-            isNavigating.current = false;
-        }, 1200);
     };
 
     // Handle wheel scroll
     const handleWheel = (e: WheelEvent) => {
-        if (isLocked.current || scrollLockRef.current || isScrolling.current || scrollCooldown.current || isTransitioning || isNavigating.current) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-        }
+        if (switchingRef.current) return;
 
         const isTrackpad = Math.abs(e.deltaX) > 0 || Math.abs(e.deltaY) < 10;
 
@@ -399,38 +258,23 @@ export default function Home() {
         e.preventDefault();
         e.stopPropagation();
 
-        if (!isLocked.current && !scrollLockRef.current && !isNavigating.current) {
-            if (direction > 0) {
-                goToNext();
-            } else {
-                goToPrevious();
-            }
-        }
     };
 
     // Handle touch scroll
     const handleTouchStart = (e: TouchEvent) => {
-        if (isLocked.current || scrollLockRef.current || isScrolling.current || scrollCooldown.current || isTransitioning || isNavigating.current) {
-            e.preventDefault();
-            return;
-        }
+        if (switchingRef.current) return;
+
         touchStartY.current = e.touches[0].clientY;
         touchStartTime.current = Date.now();
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-        if (isLocked.current || scrollLockRef.current || isScrolling.current || scrollCooldown.current || isTransitioning || isNavigating.current) {
-            e.preventDefault();
-            return;
-        }
+        if (switchingRef.current) return;
         e.preventDefault();
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-        if (isLocked.current || scrollLockRef.current || isScrolling.current || scrollCooldown.current || isTransitioning || isNavigating.current) {
-            e.preventDefault();
-            return;
-        }
+        if (switchingRef.current) return;
 
         const touchEndY = e.changedTouches[0].clientY;
         const diff = touchStartY.current - touchEndY;
@@ -450,13 +294,7 @@ export default function Home() {
             return;
         }
 
-        if (!isLocked.current && !scrollLockRef.current && !isNavigating.current) {
-            if (direction > 0) {
-                goToNext();
-            } else {
-                goToPrevious();
-            }
-        }
+        handleNavigation(nextIndex);
     };
 
     // Keyboard controls
@@ -464,10 +302,6 @@ export default function Home() {
         if (!moviesWithTrailers.length) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (isLocked.current || scrollLockRef.current || isScrolling.current || scrollCooldown.current || isTransitioning || isNavigating.current) {
-                e.preventDefault();
-                return;
-            }
 
             if (e.key === "ArrowDown" || e.key === "ArrowRight") {
                 e.preventDefault();
@@ -500,8 +334,6 @@ export default function Home() {
             container.removeEventListener("touchstart", handleTouchStart);
             container.removeEventListener("touchmove", handleTouchMove);
             container.removeEventListener("touchend", handleTouchEnd);
-
-            clearAllTimers();
         };
     }, [currentIndex, moviesWithTrailers.length, isTransitioning]);
 
@@ -510,7 +342,6 @@ export default function Home() {
         if (containerRef.current && moviesWithTrailers.length > 0) {
             containerRef.current.style.transition = "none";
             containerRef.current.style.transform = "translateY(0)";
-            setCurrentIndex(0);
 
             const initialIndices = new Set<number>();
             for (let i = 0; i < Math.min(11, moviesWithTrailers.length); i++) {
@@ -518,17 +349,11 @@ export default function Home() {
             }
             setLoadedIndices(initialIndices);
         }
-    }, [moviesWithTrailers]);
-
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            clearAllTimers();
-        };
     }, []);
 
+
     // Loading state
-    if (isLoading) {
+    if (initialLoading) {
         return (
             <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#000", color: "#fff" }}>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
@@ -540,15 +365,49 @@ export default function Home() {
         );
     }
 
-    if (moviesWithTrailers.length === 0) {
+    if (!isLoading && moviesWithTrailers.length === 0) {
         return (
-            <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", backgroundColor: "#000", color: "#fff", padding: "20px" }}>
+            <div
+                style={{
+                    height: "100vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#000",
+                    color: "#fff",
+                    padding: "20px",
+                }}
+            >
                 <div style={{ fontSize: "48px", marginBottom: "16px" }}>🎬</div>
-                <h2 style={{ fontSize: "24px", marginBottom: "8px" }}>No trailers available</h2>
-                <p style={{ color: "rgba(255,255,255,0.6)", textAlign: "center" }}>No movies with trailers found at the moment. Please check back later.</p>
+                <h2 style={{ fontSize: "24px", marginBottom: "8px" }}>
+                    No trailers available
+                </h2>
+                <p
+                    style={{
+                        color: "rgba(255,255,255,0.6)",
+                        textAlign: "center",
+                    }}
+                >
+                    No trailers found.
+                </p>
             </div>
         );
     }
+
+    const handleContentChange = (type: "movie" | "tv") => {
+        if (type === contentType) return;
+
+        switchingRef.current = true;
+
+        setContentType(type);
+
+        setTimeout(() => {
+            switchingRef.current = false;
+        }, 300);
+    };
+
+
 
     return (
         <div className="home-root" style={{ width: "100%", overflow: "hidden", position: "relative", backgroundColor: "#000" }}>
@@ -563,7 +422,11 @@ export default function Home() {
                     }
                 `}
             </style>
-            <Banner visible={bannerVisible} timer={bannerTimer} />
+
+            <ContentToggle
+                contentType={contentType}
+                onChange={handleContentChange}
+            />
 
             <div
                 ref={containerRef}
@@ -600,6 +463,7 @@ export default function Home() {
                                     totalMovies={moviesWithTrailers.length}
                                     isMuted={isMuted}
                                     onToggleSound={toggleSound}
+                                    contentType={contentType}
                                 />
                             ) : (
                                 <div

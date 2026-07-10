@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { fetchTrendingMovies } from '../controllers/movieController';
+import { fetchTrendingMovies, fetchPopularMovies } from '../controllers/movieController';
 
 const router = Router();
 
-router.get("/trending", fetchTrendingMovies);
-
+router.get("/trending/movie", fetchTrendingMovies);
+router.get("/popular/movie/:pid", fetchPopularMovies);
 export default router;
