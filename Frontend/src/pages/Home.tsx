@@ -12,9 +12,7 @@ interface Movie {
 }
 
 export default function Home() {
-    const [isMuted, setIsMuted] = useState(() => {
-        return window.innerWidth <= 768; // true on mobile, false on desktop
-    });
+    const [isMuted, setIsMuted] = useState(true);
     const [loadedIndices, setLoadedIndices] = useState<Set<number>>(new Set([0]));
     const [isTransitioning, setIsTransitioning] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -25,6 +23,7 @@ export default function Home() {
     const fetchingMoreRef = useRef(false);
     const pageRef = useRef(1);
     const [contentType, setContentType] = useState<"movie" | "tv">("movie");
+    const [filterType, setFilterType] = useState<"now_playing" | "popular" | "top_rated" | "upcoming">("now_playing");
     const [initialLoading, setInitialLoading] = useState(true);
     const [movieTrailers, setMovieTrailers] = useState<Movie[]>([]);
     const [tvTrailers, setTvTrailers] = useState<Movie[]>([]);
@@ -52,23 +51,6 @@ export default function Home() {
             : tvLoading;
 
     useEffect(() => {
-        if (
-            moviesWithTrailers.length > 0 &&
-            currentIndex >= moviesWithTrailers.length - PRELOAD_THRESHOLD &&
-            !fetchingMoreRef.current
-        ) {
-            fetchingMoreRef.current = true;
-
-            const nextPage = pageRef.current + 1;
-            pageRef.current = nextPage;
-
-            fetchContent(nextPage, contentType).finally(() => {
-                fetchingMoreRef.current = false;
-            });
-        }
-    }, [currentIndex, moviesWithTrailers.length, contentType]);
-
-    useEffect(() => {
         if (!containerRef.current) return;
 
         containerRef.current.style.transition =
@@ -80,7 +62,8 @@ export default function Home() {
 
     const fetchContent = async (
         page: number,
-        type: "movie" | "tv"
+        type: "movie" | "tv",
+        filter: "now_playing" | "popular" | "top_rated" | "upcoming" = "now_playing"
     ) => {
         try {
             let items: any[] = [];
@@ -94,11 +77,20 @@ export default function Home() {
                 setIsFetchingMore(true);
             }
 
+            const tvFilterMap = {
+                now_playing: "airing_today",
+                popular: "on_the_air",
+                top_rated: "popular",
+                upcoming: "top_rated",
+            } as const;
+
             if (type === "movie") {
-                const response = await api.get(`/movies/popular/movie/${page}`);
+                const response = await api.get(`/movies/${filter}/movie/${page}`);
                 items = response.data.results;
             } else {
-                const response = await api.get(`/tv/popular/tv/${page}`);
+                const tvFilter = tvFilterMap[filter];
+
+                const response = await api.get(`/tv/tv/${tvFilter}/${page}`);
                 items = response.data.results;
             }
 
@@ -159,6 +151,46 @@ export default function Home() {
         }
     };
 
+
+    useEffect(() => {
+        if (
+            moviesWithTrailers.length > 0 &&
+            currentIndex >= moviesWithTrailers.length - PRELOAD_THRESHOLD &&
+            !fetchingMoreRef.current
+        ) {
+            fetchingMoreRef.current = true;
+
+            const nextPage = pageRef.current + 1;
+            pageRef.current = nextPage;
+
+            fetchContent(nextPage, contentType, filterType).finally(() => {
+                fetchingMoreRef.current = false;
+            });
+        }
+    }, [currentIndex, moviesWithTrailers.length, contentType, filterType]);
+
+    // Fetch when filter changes
+    useEffect(() => {
+        pageRef.current = 1;
+        setMovieIndex(0);
+        setTvIndex(0);
+
+        // Clear existing data
+        if (contentType === "movie") {
+            setMovieTrailers([]);
+            setMovieLoading(true);
+        } else {
+            setTvTrailers([]);
+            setTvLoading(true);
+        }
+
+        fetchContent(1, contentType, filterType);
+    }, [filterType, contentType]);
+
+    const handleFilterChange = (filter: "now_playing" | "popular" | "top_rated" | "upcoming") => {
+        setFilterType(filter);
+    };
+
     useEffect(() => {
         pageRef.current = 1;
 
@@ -166,14 +198,14 @@ export default function Home() {
             contentType === "movie" &&
             movieTrailers.length === 0
         ) {
-            fetchContent(1, "movie");
+            fetchContent(1, contentType, filterType);
         }
 
         if (
             contentType === "tv" &&
             tvTrailers.length === 0
         ) {
-            fetchContent(1, "tv");
+            fetchContent(1, contentType, filterType);
         }
 
     }, [
@@ -226,7 +258,6 @@ export default function Home() {
     };
 
     const handleNavigation = (index: number) => {
-        console.log("Navigate", contentType, index);
         if (switchingRef.current) return;
 
         if (contentType === "movie") {
@@ -426,6 +457,8 @@ export default function Home() {
             <ContentToggle
                 contentType={contentType}
                 onChange={handleContentChange}
+                filterType={filterType}
+                onFilterChange={handleFilterChange}
             />
 
             <div

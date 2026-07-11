@@ -11,3 +11,21 @@ export const getPopularTVShows = async (pid: string) => {
 
     return response.data;
 }
+
+export const getNowPlayingTVShows = async (pid: string) => {
+    const response = await tmdb.get(`/tv/airing_today?&page=${pid}`);
+
+    return response.data;
+}
+    
+export const getOnTheAirTVShows = async (pid: string) => {
+    const response = await tmdb.get(`/tv/on_the_air?&page=${pid}`);
+
+    return response.data;
+}
+
+export const getTopRatedTVShows = async (pid: string) => {
+    const response = await tmdb.get(`/tv/top_rated?&page=${pid}`);
+
+    return response.data;
+}
