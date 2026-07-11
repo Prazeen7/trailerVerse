@@ -46,7 +46,7 @@ export default function Home() {
     const isLoading =
         contentType === "movie"
             ? movieLoading
-            : tvLoading;
+            : tvLoading;0
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -139,6 +139,7 @@ export default function Home() {
             } else {
                 setTvLoading(false);
             }
+
 
             if (initialLoading) {
                 setInitialLoading(false);

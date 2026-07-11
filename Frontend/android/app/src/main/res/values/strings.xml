@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Trailer Verse</string>
+    <string name="title_activity_main">Trailer Verse</string>
+    <string name="package_name">app.vercel.trailerverseone</string>
+    <string name="custom_url_scheme">app.vercel.trailerverseone</string>
+</resources>

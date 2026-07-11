@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { ScreenOrientation } from "@capacitor/screen-orientation";
 import api from "../api/api";
 import Loader from "./TrailerLoader";
 
@@ -295,20 +296,22 @@ export default function TrailerCard({
     };
 
     // Cross-browser fullscreen helpers
-    const requestFullscreenOn = (el: HTMLElement) => {
+    const requestFullscreenOn = async (el: HTMLElement) => {
         const anyEl = el as any;
         if (anyEl.requestFullscreen) return anyEl.requestFullscreen();
         if (anyEl.webkitRequestFullscreen) return anyEl.webkitRequestFullscreen();
         if (anyEl.webkitEnterFullscreen) return anyEl.webkitEnterFullscreen(); // iOS Safari video fallback
         if (anyEl.msRequestFullscreen) return anyEl.msRequestFullscreen();
+        await ScreenOrientation.lock({ orientation: "landscape" });
         return Promise.reject(new Error("Fullscreen API not supported"));
     };
 
-    const exitFullscreenNow = () => {
+    const exitFullscreenNow = async () => {
         const anyDoc = document as any;
         if (anyDoc.exitFullscreen) return anyDoc.exitFullscreen();
         if (anyDoc.webkitExitFullscreen) return anyDoc.webkitExitFullscreen();
         if (anyDoc.msExitFullscreen) return anyDoc.msExitFullscreen();
+        await ScreenOrientation.lock({ orientation: "portrait" });
         return Promise.resolve();
     };
 
