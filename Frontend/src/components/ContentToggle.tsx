@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface ContentToggleProps {
     contentType: "movie" | "tv";
@@ -361,7 +361,7 @@ export default function ContentToggle({
                         />
                     )}
 
-                    {filters.map((filter, index) => {
+                    {filters.map((filter) => {
                         const isActive = filterType === filter.id;
 
                         return (

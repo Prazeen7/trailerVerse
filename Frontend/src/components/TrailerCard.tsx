@@ -29,15 +29,11 @@ export default function TrailerCard({
     const [showControls, setShowControls] = useState(true);
     const [iframeReady, setIframeReady] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [videoPlaying, setVideoPlaying] = useState(false);
     const [loadError, setLoadError] = useState(false);
     const controlsTimeout = useRef<number | null>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    const playAttempted = useRef(false);
-    const initializedRef = useRef(false);
     const retryCount = useRef(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const hasLoopedRef = useRef(false);
     const [isPaused, setIsPaused] = useState(false);
     const [showPlaybackIcon, setShowPlaybackIcon] = useState(false);
     const playbackTimeout = useRef<number | null>(null);
@@ -179,7 +175,6 @@ export default function TrailerCard({
                     switch (data.info) {
                         case 1: // Playing
                             setIsPaused(false);
-                            setVideoPlaying(true);
                             break;
 
                         case 2: // Paused

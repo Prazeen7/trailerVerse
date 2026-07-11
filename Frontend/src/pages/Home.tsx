@@ -14,12 +14,10 @@ interface Movie {
 export default function Home() {
     const [isMuted, setIsMuted] = useState(true);
     const [loadedIndices, setLoadedIndices] = useState<Set<number>>(new Set([0]));
-    const [isTransitioning, setIsTransitioning] = useState(false);
+    const isTransitioning = false;
     const containerRef = useRef<HTMLDivElement>(null);
     const touchStartY = useRef(0);
     const touchStartTime = useRef(0);
-    const [pid, setPid] = useState(1);
-    const [isFetchingMore, setIsFetchingMore] = useState(false);
     const fetchingMoreRef = useRef(false);
     const pageRef = useRef(1);
     const [contentType, setContentType] = useState<"movie" | "tv">("movie");
@@ -73,8 +71,6 @@ export default function Home() {
                 } else {
                     setTvLoading(true);
                 }
-            } else {
-                setIsFetchingMore(true);
             }
 
             const tvFilterMap = {
@@ -143,7 +139,6 @@ export default function Home() {
             } else {
                 setTvLoading(false);
             }
-            setIsFetchingMore(false);
 
             if (initialLoading) {
                 setInitialLoading(false);
