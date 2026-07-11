@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { Capacitor } from "@capacitor/core";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import api from "../api/api";
 import Loader from "./TrailerLoader";
@@ -296,22 +297,20 @@ export default function TrailerCard({
     };
 
     // Cross-browser fullscreen helpers
-    const requestFullscreenOn = async (el: HTMLElement) => {
+    const requestFullscreenOn = (el: HTMLElement) => {
         const anyEl = el as any;
         if (anyEl.requestFullscreen) return anyEl.requestFullscreen();
         if (anyEl.webkitRequestFullscreen) return anyEl.webkitRequestFullscreen();
         if (anyEl.webkitEnterFullscreen) return anyEl.webkitEnterFullscreen(); // iOS Safari video fallback
         if (anyEl.msRequestFullscreen) return anyEl.msRequestFullscreen();
-        await ScreenOrientation.lock({ orientation: "landscape" });
         return Promise.reject(new Error("Fullscreen API not supported"));
     };
 
-    const exitFullscreenNow = async () => {
+    const exitFullscreenNow = () => {
         const anyDoc = document as any;
         if (anyDoc.exitFullscreen) return anyDoc.exitFullscreen();
         if (anyDoc.webkitExitFullscreen) return anyDoc.webkitExitFullscreen();
         if (anyDoc.msExitFullscreen) return anyDoc.msExitFullscreen();
-        await ScreenOrientation.lock({ orientation: "portrait" });
         return Promise.resolve();
     };
 
@@ -326,37 +325,29 @@ export default function TrailerCard({
 
     // Toggle fullscreen + rotate to landscape
     const handleToggleFullscreen = async (e?: React.MouseEvent) => {
-        if (e) {
-            e.stopPropagation();
-            e.preventDefault();
+        e?.preventDefault();
+        e?.stopPropagation();
+
+        if (Capacitor.isNativePlatform()) {
+            if (!isFullscreen) {
+                await ScreenOrientation.lock({
+                    orientation: "landscape",
+                });
+                setIsFullscreen(true);
+            } else {
+                await ScreenOrientation.lock({
+                    orientation: "portrait",
+                });
+                setIsFullscreen(false);
+            }
+            return;
         }
 
-        try {
-            if (!isCurrentlyFullscreen()) {
-                // Fullscreen the whole document
-                await requestFullscreenOn(document.documentElement);
-                // Rotate the screen to landscape
-                const orientation: any = (screen as any).orientation;
-                if (orientation?.lock) {
-                    try {
-                        await orientation.lock("landscape");
-                    } catch (err) {
-                        // Orientation lock not supported/allowed - ignore
-                    }
-                }
-            } else {
-                const orientation: any = (screen as any).orientation;
-                if (orientation?.unlock) {
-                    try {
-                        orientation.unlock();
-                    } catch (err) {
-                        // ignore
-                    }
-                }
-                await exitFullscreenNow();
-            }
-        } catch (err) {
-            // Fullscreen request rejected (e.g. no user gesture) - ignore
+        // Browser only
+        if (!document.fullscreenElement) {
+            await requestFullscreenOn(document.documentElement);
+        } else {
+            await exitFullscreenNow();
         }
     };
 
@@ -782,7 +773,10 @@ export default function TrailerCard({
                         pointerEvents: "none",
                     }}
                 >
-                    <h2 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "2px", lineHeight: 1.3 }}>
+                    <h2 style={{
+                        color: "#ffffff",
+                        WebkitTextFillColor: "#ffffff", fontSize: "14px", fontWeight: 600, marginBottom: "2px", lineHeight: 1.3
+                    }}>
                         {movie.title || movie.name}
                     </h2>
                     <p style={{ fontSize: "11px", opacity: 0.85 }}>

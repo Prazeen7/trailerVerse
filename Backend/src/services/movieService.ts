@@ -19,7 +19,7 @@ export const getNowPlayingMovies = async (pid: string) => {
 }
 
 export const getUpcomingMovies = async (pid: string) => {
-    const response = await tmdb.get(`/movie/upcoming?&page=${pid}`);
+    const response = await tmdb.get(`/movie/upcoming?&page=${pid}&region=us`);
 
     return response.data;
 }
