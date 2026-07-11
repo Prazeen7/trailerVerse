@@ -9,14 +9,20 @@ const app = express();
 dotenv.config();
 
 // Middleware
+const allowedOrigins = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map(origin => origin.trim());
+
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL,
+        origin: (origin, callback) =>
+            !origin || allowedOrigins.includes(origin)
+                ? callback(null, true)
+                : callback(new Error("Not allowed by CORS")),
         credentials: true,
     })
 );
-
-app.use(express.json());   
+app.use(express.json());
 app.get('/', (_req, res) => {
     res.json({
         success: true,
