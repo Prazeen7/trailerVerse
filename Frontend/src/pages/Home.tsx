@@ -29,7 +29,10 @@ export default function Home() {
     const [movieLoading, setMovieLoading] = useState(true);
     const [tvLoading, setTvLoading] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
+    const isPausedRef = useRef(false); 
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isVisible, setIsVisible] = useState(true);
+    const inactivityTimeoutRef = useRef<number | null>(null);
     const switchingRef = useRef(false);
     const requestIdRef = useRef(0);
     const fetchControllerRef = useRef<AbortController | null>(null);
@@ -204,6 +207,52 @@ export default function Home() {
             fetchControllerRef.current?.abort();
         };
     }, []);
+
+    // ── UI visibility / inactivity timer (shared across all overlays) ──────────
+
+    // Keep isPausedRef in sync so stale closures (event listeners) read live value
+    useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+
+    const showUIControls = () => {
+        setIsVisible(true);
+        if (inactivityTimeoutRef.current) {
+            clearTimeout(inactivityTimeoutRef.current);
+            inactivityTimeoutRef.current = null;
+        }
+        // Read the ref — not the closed-over state — so this is always current
+        if (!isPausedRef.current) {
+            inactivityTimeoutRef.current = window.setTimeout(() => {
+                setIsVisible(false);
+            }, 3000);
+        }
+    };
+
+    useEffect(() => {
+        const events = ['mousemove', 'mousedown', 'click', 'scroll', 'keydown', 'touchstart'] as const;
+        events.forEach(ev => document.addEventListener(ev, showUIControls));
+        inactivityTimeoutRef.current = window.setTimeout(() => setIsVisible(false), 3000);
+        return () => {
+            events.forEach(ev => document.removeEventListener(ev, showUIControls));
+            if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+        };
+    }, []);
+
+    // Pin controls visible while paused; restart countdown when resumed
+    useEffect(() => {
+        if (isPaused) {
+            if (inactivityTimeoutRef.current) {
+                clearTimeout(inactivityTimeoutRef.current);
+                inactivityTimeoutRef.current = null;
+            }
+            setIsVisible(true);
+        } else {
+            // Resumed — give 3 s before hiding
+            if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+            inactivityTimeoutRef.current = window.setTimeout(() => {
+                setIsVisible(false);
+            }, 3000);
+        }
+    }, [isPaused]);
 
 
     useEffect(() => {
@@ -520,6 +569,28 @@ export default function Home() {
                         height: 100vh;
                         height: 100dvh;
                     }
+
+                    /* Portrait phone — hide desktop-only overlays */
+                    @media (max-width: 582px) {
+                        .home-nav-arrows {
+                            display: none !important;
+                        }
+
+                        .home-keyboard-hint {
+                            display: none !important;
+                        }
+                    }
+
+                    /* Landscape phone — no room for nav arrows; swipe handles navigation */
+                    @media (max-height: 500px) and (orientation: landscape) {
+                        .home-nav-arrows {
+                            display: none !important;
+                        }
+
+                        .home-keyboard-hint {
+                            display: none !important;
+                        }
+                    }
                 `}
             </style>
 
@@ -534,6 +605,8 @@ export default function Home() {
                 onTogglePlayPause={togglePaused}
                 isFullscreen={isFullscreen}
                 onToggleFullscreen={toggleFullscreen}
+                isVisible={isVisible}
+                onActivity={showUIControls}
             />
 
             <div
@@ -565,10 +638,6 @@ export default function Home() {
                                 <TrailerCard
                                     movie={movie}
                                     isActive={index === currentIndex}
-                                    onNext={goToNext}
-                                    onPrevious={goToPrevious}
-                                    currentIndex={index}
-                                    totalMovies={moviesWithTrailers.length}
                                     isMuted={isMuted}
                                     contentType={contentType}
                                     isPaused={isPaused}
@@ -620,6 +689,109 @@ export default function Home() {
 
             {isTransitioning && (
                 <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none", zIndex: 50, background: "rgba(0,0,0,0.2)" }} />
+            )}
+
+            {/* Navigation arrows — owned by Home, visibility driven by shared isVisible */}
+            {moviesWithTrailers.length > 0 && (
+                <div
+                    className="home-nav-arrows"
+                    style={{
+                        position: "fixed",
+                        right: 14,
+                        top: "50%",
+                        transform: `translateY(-50%) ${!isVisible ? 'translateX(80px)' : 'translateX(0)'}`,
+                        zIndex: 20,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                        opacity: isVisible ? 1 : 0,
+                        pointerEvents: isVisible ? "auto" : "none",
+                        transition: "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
+                    }}
+                >
+                    {currentIndex > 0 && (
+                        <button
+                            onClick={goToPrevious}
+                            style={{
+                                width: "34px",
+                                height: "34px",
+                                borderRadius: "50%",
+                                backgroundColor: "rgba(255,255,255,0.2)",
+                                backdropFilter: "blur(10px)",
+                                border: "1.5px solid rgba(255,255,255,0.3)",
+                                color: "white",
+                                fontSize: "16px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                transition: "all 0.3s ease",
+                                outline: "none",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.4)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.2)";
+                            }}
+                        >
+                            ↑
+                        </button>
+                    )}
+
+                    {currentIndex < moviesWithTrailers.length - 1 && (
+                        <button
+                            onClick={goToNext}
+                            style={{
+                                width: "34px",
+                                height: "34px",
+                                borderRadius: "50%",
+                                backgroundColor: "rgba(255,255,255,0.2)",
+                                backdropFilter: "blur(10px)",
+                                border: "1.5px solid rgba(255,255,255,0.3)",
+                                color: "white",
+                                fontSize: "16px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                transition: "all 0.3s ease",
+                                outline: "none",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.4)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.2)";
+                            }}
+                        >
+                            ↓
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {/* Keyboard hint — owned by Home, hidden on mobile */}
+            {moviesWithTrailers.length > 0 && (
+                <div
+                    className="home-keyboard-hint"
+                    style={{
+                        position: "fixed",
+                        bottom: 10,
+                        left: "50%",
+                        transform: `translateX(-50%) ${!isVisible ? 'translateY(30px)' : 'translateY(0)'}`,
+                        color: "rgba(255,255,255,0.5)",
+                        fontSize: "10px",
+                        zIndex: 10,
+                        textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
+                        textAlign: "center",
+                        pointerEvents: "none",
+                        opacity: isVisible ? 1 : 0,
+                        transition: "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
+                    }}
+                >
+                    ↑ ↓ to navigate
+                </div>
             )}
         </div>
     );

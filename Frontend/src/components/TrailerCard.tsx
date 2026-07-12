@@ -7,40 +7,28 @@ import Loader from "./TrailerLoader";
 interface Props {
     movie: any;
     isActive?: boolean;
-    onNext?: () => void;
-    onPrevious?: () => void;
-    currentIndex?: number;
-    totalMovies?: number;
     isMuted?: boolean;
     contentType?: "movie" | "tv";
     isPaused?: boolean;
     isFullscreen?: boolean;
     onFullscreenChange?: (isFullscreen: boolean) => void;
     onTogglePlayPause?: () => void;
-    onToggleMute?: () => void;
 }
 
 export default function TrailerCard({
     movie,
     isActive = true,
-    onNext,
-    onPrevious,
-    currentIndex = 0,
-    totalMovies = 1,
     isMuted = false,
     contentType = "movie",
     isPaused = false,
     isFullscreen = false,
     onFullscreenChange,
     onTogglePlayPause,
-    onToggleMute,
 }: Props) {
     const [videoKey, setVideoKey] = useState("");
-    const [showControls, setShowControls] = useState(true);
     const [iframeReady, setIframeReady] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
-    const controlsTimeout = useRef<number | null>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const retryCount = useRef(0);
     const touchStartY = useRef(0);
@@ -201,91 +189,57 @@ export default function TrailerCard({
                 if (Capacitor.isNativePlatform()) {
                     ScreenOrientation.lock({ orientation: "landscape" });
                 } else {
-                    requestFullscreenOn(document.documentElement);
+                    // Request fullscreen, then lock orientation once fullscreen is active
+                    requestFullscreenOn(document.documentElement)
+                        .then(() => {
+                            lockOrientationLandscape();
+                        })
+                        .catch(() => {
+                            // Fullscreen denied or not supported — try orientation anyway
+                            lockOrientationLandscape();
+                        });
                 }
             } else {
                 exitFullscreenNow();
+                unlockOrientation();
             }
         }
 
         prevFullscreenRef.current = curr;
     }, [isFullscreen, isActive, iframeReady, loadError]);
 
+    // Track isPaused changes (no showControls side-effect needed anymore)
     useEffect(() => {
-        if (!isActive) return;
-        
-        const prev = prevIsPausedRef.current;
-        const curr = isPaused;
-        
-        if (prev !== curr) {
-            setShowControls(true);
-            if (controlsTimeout.current !== null) {
-                clearTimeout(controlsTimeout.current);
+        prevIsPausedRef.current = isPaused;
+    }, [isPaused]);
+
+    /** Lock to landscape using the Web Screen Orientation API (web mobile). */
+    const lockOrientationLandscape = () => {
+        try {
+            const orientation = (screen as any).orientation;
+            if (orientation?.lock) {
+                orientation.lock("landscape").catch(() => {
+                    // Some browsers (Safari) don't support orientation lock — silently ignore
+                });
             }
-            controlsTimeout.current = window.setTimeout(() => {
-                setShowControls(false);
-            }, 3000);
-        }
-        
-        prevIsPausedRef.current = curr;
-    }, [isPaused, isActive]);
-
-    useEffect(() => {
-        if (!isActive) return;
-
-        setShowControls(true);
-        if (controlsTimeout.current !== null) {
-            clearTimeout(controlsTimeout.current);
-            controlsTimeout.current = null;
-        }
-        controlsTimeout.current = window.setTimeout(() => {
-            setShowControls(false);
-        }, 3000);
-
-        return () => {
-            if (controlsTimeout.current !== null) {
-                clearTimeout(controlsTimeout.current);
-                controlsTimeout.current = null;
-            }
-        };
-    }, [isActive]);
-
-    useEffect(() => {
-        if (!isActive) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-                e.preventDefault();
-                onNext?.();
-            } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-                e.preventDefault();
-                onPrevious?.();
-            } else if (e.key === " " || e.key === "Space") {
-                e.preventDefault();
-                if (onToggleMute) {
-                    onToggleMute();
-                }
-            }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isActive, onNext, onPrevious, onToggleMute]);
-
-    const handleShowControls = () => {
-        if (isActive) {
-            setShowControls(true);
-            if (controlsTimeout.current !== null) {
-                clearTimeout(controlsTimeout.current);
-                controlsTimeout.current = null;
-            }
-            controlsTimeout.current = window.setTimeout(() => {
-                setShowControls(false);
-            }, 3000);
+        } catch {
+            // Silently ignore
         }
     };
 
-    const requestFullscreenOn = (el: HTMLElement) => {
+    /** Unlock orientation when exiting fullscreen on web. */
+    const unlockOrientation = () => {
+        try {
+            const orientation = (screen as any).orientation;
+            if (orientation?.unlock) {
+                orientation.unlock();
+            }
+        } catch {
+            // Silently ignore
+        }
+    };
+
+    const requestFullscreenOn = (el: HTMLElement): Promise<void> => {
         const anyEl = el as any;
         if (anyEl.requestFullscreen) return anyEl.requestFullscreen();
         if (anyEl.webkitRequestFullscreen) return anyEl.webkitRequestFullscreen();
@@ -338,11 +292,11 @@ export default function TrailerCard({
         };
     }, [onFullscreenChange]);
 
+    // Tap-to-pause (touch devices) — belongs to the player
     const handleTouchStartPlayback = (e: React.TouchEvent) => {
         touchStartY.current = e.touches[0].clientY;
         touchStartX.current = e.touches[0].clientX;
         touchStartTime.current = Date.now();
-        handleShowControls();
     };
 
     const handleTouchEndPlayback = (e: React.TouchEvent) => {
@@ -455,7 +409,6 @@ export default function TrailerCard({
                 backgroundColor: "#000",
                 overflow: "hidden",
             }}
-            onMouseMove={handleShowControls}
         >
             <style>
                 {`
@@ -483,14 +436,6 @@ export default function TrailerCard({
                             height: 135%;
                             margin-left: 0;
                             transform: translateY(-50%);
-                        }
-
-                        .trailer-nav-arrows {
-                            display: none !important;
-                        }
-
-                        .trailer-keyboard-hint {
-                            display: none !important;
                         }
 
                         .trailer-caption {
@@ -566,109 +511,6 @@ export default function TrailerCard({
                     <p style={{ fontSize: "11px", opacity: 0.85 }}>
                         ⭐ {movie.vote_average !== "0" ? movie.vote_average.toFixed(1) : "N/A"} | {movie.release_date || movie.first_air_date}
                     </p>
-                </div>
-            )}
-
-            {isActive && showControls && !isLoading && !loadError && (
-                <div
-                    className="trailer-nav-arrows"
-                    style={{
-                        position: "absolute",
-                        right: 14,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        zIndex: 20,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                        pointerEvents: "none",
-                    }}
-                >
-                    {currentIndex > 0 && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onPrevious?.();
-                            }}
-                            style={{
-                                width: "34px",
-                                height: "34px",
-                                borderRadius: "50%",
-                                backgroundColor: "rgba(255,255,255,0.2)",
-                                backdropFilter: "blur(10px)",
-                                border: "1.5px solid rgba(255,255,255,0.3)",
-                                color: "white",
-                                fontSize: "16px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "all 0.3s ease",
-                                pointerEvents: "auto",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.4)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.2)";
-                            }}
-                        >
-                            ↑
-                        </button>
-                    )}
-
-                    {currentIndex < totalMovies - 1 && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onNext?.();
-                            }}
-                            style={{
-                                width: "34px",
-                                height: "34px",
-                                borderRadius: "50%",
-                                backgroundColor: "rgba(255,255,255,0.2)",
-                                backdropFilter: "blur(10px)",
-                                border: "1.5px solid rgba(255,255,255,0.3)",
-                                color: "white",
-                                fontSize: "16px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                transition: "all 0.3s ease",
-                                pointerEvents: "auto",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.4)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.2)";
-                            }}
-                        >
-                            ↓
-                        </button>
-                    )}
-                </div>
-            )}
-
-            {isActive && showControls && !isLoading && !loadError && (
-                <div
-                    className="trailer-keyboard-hint"
-                    style={{
-                        position: "absolute",
-                        bottom: 10,
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        color: "rgba(255,255,255,0.5)",
-                        fontSize: "10px",
-                        zIndex: 10,
-                        textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
-                        textAlign: "center",
-                        pointerEvents: "none",
-                    }}
-                >
-                    ↑ ↓ to navigate
                 </div>
             )}
         </div>
