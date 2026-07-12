@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import api from "../api/api";
@@ -12,8 +12,12 @@ interface Props {
     currentIndex?: number;
     totalMovies?: number;
     isMuted?: boolean;
-    onToggleSound?: () => void;
     contentType?: "movie" | "tv";
+    isPaused?: boolean;
+    isFullscreen?: boolean;
+    onFullscreenChange?: (isFullscreen: boolean) => void;
+    onTogglePlayPause?: () => void;
+    onToggleMute?: () => void;
 }
 
 export default function TrailerCard({
@@ -24,8 +28,12 @@ export default function TrailerCard({
     currentIndex = 0,
     totalMovies = 1,
     isMuted = false,
-    onToggleSound,
     contentType = "movie",
+    isPaused = false,
+    isFullscreen = false,
+    onFullscreenChange,
+    onTogglePlayPause,
+    onToggleMute,
 }: Props) {
     const [videoKey, setVideoKey] = useState("");
     const [showControls, setShowControls] = useState(true);
@@ -35,13 +43,11 @@ export default function TrailerCard({
     const controlsTimeout = useRef<number | null>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const retryCount = useRef(0);
-    const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isPaused, setIsPaused] = useState(false);
-    const [showPlaybackIcon, setShowPlaybackIcon] = useState(false);
-    const playbackTimeout = useRef<number | null>(null);
     const touchStartY = useRef(0);
     const touchStartX = useRef(0);
     const touchStartTime = useRef(0);
+    const prevIsPausedRef = useRef(isPaused);
+    const prevFullscreenRef = useRef(isFullscreen);
 
     const isTouchDevice =
         "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -57,18 +63,13 @@ export default function TrailerCard({
         };
 
         fetchTrailer();
-    }, [movie.id]);
+    }, [movie.id, contentType]);
 
-    // Build iframe URL
-    // cc_load_policy=3 -> force captions off (overrides viewer's saved preference, unlike 0)
-    // iv_load_policy=3 -> don't show video annotations
     const getIframeSrc = () => {
         if (!videoKey) return "";
-        return `https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&loop=1&controls=0&color=white&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&disablekb=1&cc_load_policy=3&iv_load_policy=3&playlist=${videoKey}&origin=${window.location.origin}&fs=0&showinfo=0&autohide=1&fs=0&modestbranding=1&showsearch=0&showinfo=0&autohide=1&fs=0`;
+        return `https://www.youtube.com/embed/${videoKey}?autoplay=1&mute=1&loop=1&controls=0&color=white&modestbranding=1&rel=0&playsinline=1&enablejsapi=1&disablekb=1&cc_load_policy=3&iv_load_policy=3&playlist=${videoKey}&origin=${window.location.origin}&fs=0&showinfo=0&autohide=1&showsearch=0`;
     };
 
-
-    // Handle iframe load event
     const handleIframeLoad = () => {
         setIframeReady(true);
         setIsLoading(false);
@@ -84,7 +85,6 @@ export default function TrailerCard({
         }, 500);
     };
 
-    // Handle iframe errors
     const handleIframeError = () => {
         setLoadError(true);
         setIsLoading(false);
@@ -98,9 +98,7 @@ export default function TrailerCard({
         }
     };
 
-
-    // Send command to YouTube iframe with error handling
-    const sendCommand = (command: string, args: any[] = []) => {
+    const sendCommand = useCallback((command: string, args: any[] = []) => {
         if (iframeRef.current && iframeReady) {
             try {
                 iframeRef.current.contentWindow?.postMessage(
@@ -115,85 +113,46 @@ export default function TrailerCard({
                 // Silently handle error - YouTube might not respond
             }
         }
-    };
+    }, [iframeReady]);
 
-    // Force captions off. cc_load_policy=0 in the embed URL isn't
-    // enough on its own - if the viewer has captions saved as "on" in
-    // their YouTube account/browser, YouTube restores that preference
-    // regardless. Explicitly unloading the captions module overrides it.
-    // Most gentle approach - just set captions to off
     useEffect(() => {
         if (iframeReady && !loadError) {
-            // Initial cleanup
             sendCommand('unloadModule', ['captions']);
-
-            // Poll every 1 second to keep captions suppressed
             const interval = window.setInterval(() => {
                 sendCommand('unloadModule', ['captions']);
             }, 1000);
-
-            return () => {
-                clearInterval(interval);
-            };
+            return () => clearInterval(interval);
         }
-    }, [iframeReady, loadError]);
-
+    }, [iframeReady, loadError, sendCommand]);
 
     useEffect(() => {
         if (!iframeReady || !isActive || loadError) return;
 
-        // This creates a message listener for YouTube's state changes
         const handleMessage = (event: MessageEvent) => {
-            // Only accept messages from YouTube
             if (event.origin !== 'https://www.youtube.com') return;
 
             try {
                 const data = JSON.parse(event.data);
                 if (data.event === "onReady") {
                     sendCommand("playVideo");
-
-                    if (isMuted) {
-                        sendCommand("mute");
-                    } else {
-                        sendCommand("unMute");
-                    }
-
-                    setTimeout(() => {
-                        sendCommand("playVideo");
-                    }, 100);
-
-                    setTimeout(() => {
-                        sendCommand("playVideo");
-                    }, 500);
-
-                    setTimeout(() => {
-                        sendCommand("playVideo");
-                    }, 1000);
+                    setTimeout(() => sendCommand("playVideo"), 100);
+                    setTimeout(() => sendCommand("playVideo"), 500);
+                    setTimeout(() => sendCommand("playVideo"), 1000);
                 }
 
-                // YouTube sends info about video state changes
-                // Keep React state in sync with YouTube player
                 if (data.event === "onStateChange") {
                     switch (data.info) {
                         case 1: // Playing
-                            setIsPaused(false);
                             break;
-
                         case 2: // Paused
-                            setIsPaused(true);
                             break;
-
                         case 0: // Ended
-                            setIsPaused(false);
-
                             sendCommand("seekTo", [0]);
                             sendCommand("playVideo");
-
                             setTimeout(() => {
                                 sendCommand("seekTo", [0]);
                                 sendCommand("playVideo");
                             }, 100);
-
                             break;
                     }
                 }
@@ -208,43 +167,80 @@ export default function TrailerCard({
         };
 
         window.addEventListener('message', handleMessage);
-        return () => {
-            window.removeEventListener('message', handleMessage);
-        };
-    }, [iframeReady, isActive, loadError, sendCommand]);
-
+        return () => window.removeEventListener('message', handleMessage);
+    }, [iframeReady, isActive, loadError, sendCommand, movie.id]);
 
     useEffect(() => {
         if (!iframeReady || loadError) return;
 
         if (isActive) {
-            sendCommand("playVideo");
-
+            if (isPaused) {
+                sendCommand("pauseVideo");
+            } else {
+                sendCommand("playVideo");
+            }
             if (isMuted) {
                 sendCommand("mute");
             } else {
                 sendCommand("unMute");
             }
         } else {
-            sendCommand("mute");
             sendCommand("pauseVideo");
+            sendCommand("mute");
         }
-    }, [isActive, iframeReady, isMuted, loadError]);
+    }, [isActive, iframeReady, isMuted, loadError, isPaused, sendCommand]);
 
-    // Hide controls after 3 seconds of inactivity
     useEffect(() => {
-        if (isActive) {
-            setShowControls(true);
+        if (!isActive || !iframeReady || loadError) return;
 
+        const prev = prevFullscreenRef.current;
+        const curr = isFullscreen;
+
+        if (prev !== curr) {
+            if (curr) {
+                if (Capacitor.isNativePlatform()) {
+                    ScreenOrientation.lock({ orientation: "landscape" });
+                } else {
+                    requestFullscreenOn(document.documentElement);
+                }
+            } else {
+                exitFullscreenNow();
+            }
+        }
+
+        prevFullscreenRef.current = curr;
+    }, [isFullscreen, isActive, iframeReady, loadError]);
+
+    useEffect(() => {
+        if (!isActive) return;
+        
+        const prev = prevIsPausedRef.current;
+        const curr = isPaused;
+        
+        if (prev !== curr) {
+            setShowControls(true);
             if (controlsTimeout.current !== null) {
                 clearTimeout(controlsTimeout.current);
-                controlsTimeout.current = null;
             }
-
             controlsTimeout.current = window.setTimeout(() => {
                 setShowControls(false);
             }, 3000);
         }
+        
+        prevIsPausedRef.current = curr;
+    }, [isPaused, isActive]);
+
+    useEffect(() => {
+        if (!isActive) return;
+
+        setShowControls(true);
+        if (controlsTimeout.current !== null) {
+            clearTimeout(controlsTimeout.current);
+            controlsTimeout.current = null;
+        }
+        controlsTimeout.current = window.setTimeout(() => {
+            setShowControls(false);
+        }, 3000);
 
         return () => {
             if (controlsTimeout.current !== null) {
@@ -254,7 +250,6 @@ export default function TrailerCard({
         };
     }, [isActive]);
 
-    // Keyboard controls
     useEffect(() => {
         if (!isActive) return;
 
@@ -267,41 +262,34 @@ export default function TrailerCard({
                 onPrevious?.();
             } else if (e.key === " " || e.key === "Space") {
                 e.preventDefault();
-                if (onToggleSound) {
-                    onToggleSound();
+                if (onToggleMute) {
+                    onToggleMute();
                 }
             }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [isActive, onNext, onPrevious, onToggleSound]);
+    }, [isActive, onNext, onPrevious, onToggleMute]);
 
-    // Reveal the controls (buttons, captions) and reset the
-    // auto-hide timer. Desktop triggers this on mouse move,
-    // mobile triggers it on touch, since touch devices don't
-    // fire mousemove reliably.
     const handleShowControls = () => {
         if (isActive) {
             setShowControls(true);
-
             if (controlsTimeout.current !== null) {
                 clearTimeout(controlsTimeout.current);
                 controlsTimeout.current = null;
             }
-
             controlsTimeout.current = window.setTimeout(() => {
                 setShowControls(false);
             }, 3000);
         }
     };
 
-    // Cross-browser fullscreen helpers
     const requestFullscreenOn = (el: HTMLElement) => {
         const anyEl = el as any;
         if (anyEl.requestFullscreen) return anyEl.requestFullscreen();
         if (anyEl.webkitRequestFullscreen) return anyEl.webkitRequestFullscreen();
-        if (anyEl.webkitEnterFullscreen) return anyEl.webkitEnterFullscreen(); // iOS Safari video fallback
+        if (anyEl.webkitEnterFullscreen) return anyEl.webkitEnterFullscreen();
         if (anyEl.msRequestFullscreen) return anyEl.msRequestFullscreen();
         return Promise.reject(new Error("Fullscreen API not supported"));
     };
@@ -323,41 +311,10 @@ export default function TrailerCard({
         );
     };
 
-    // Toggle fullscreen + rotate to landscape
-    const handleToggleFullscreen = async (e?: React.MouseEvent) => {
-        e?.preventDefault();
-        e?.stopPropagation();
-
-        if (Capacitor.isNativePlatform()) {
-            if (!isFullscreen) {
-                await ScreenOrientation.lock({
-                    orientation: "landscape",
-                });
-                setIsFullscreen(true);
-            } else {
-                await ScreenOrientation.lock({
-                    orientation: "portrait",
-                });
-                setIsFullscreen(false);
-            }
-            return;
-        }
-
-        // Browser only
-        if (!document.fullscreenElement) {
-            await requestFullscreenOn(document.documentElement);
-        } else {
-            await exitFullscreenNow();
-        }
-    };
-
-    // Keep isFullscreen state in sync with the actual browser state,
-    // and release the orientation lock if the user exits fullscreen
-    // via Esc / back gesture rather than our button.
     useEffect(() => {
         const handleFullscreenChange = () => {
             const active = isCurrentlyFullscreen();
-            setIsFullscreen(active);
+            onFullscreenChange?.(active);
             if (!active) {
                 const orientation: any = (screen as any).orientation;
                 if (orientation?.unlock) {
@@ -379,23 +336,36 @@ export default function TrailerCard({
             document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
             document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
         };
-    }, []);
+    }, [onFullscreenChange]);
 
-    // Handle sound toggle
-    const handleToggleSound = (e?: React.MouseEvent) => {
-        e?.stopPropagation();
-        e?.preventDefault();
-
-        if (isMuted) {
-            sendCommand("unMute");
-        } else {
-            sendCommand("mute");
-        }
-
-        onToggleSound?.();
+    const handleTouchStartPlayback = (e: React.TouchEvent) => {
+        touchStartY.current = e.touches[0].clientY;
+        touchStartX.current = e.touches[0].clientX;
+        touchStartTime.current = Date.now();
+        handleShowControls();
     };
 
-    // Error fallback component
+    const handleTouchEndPlayback = (e: React.TouchEvent) => {
+        const endY = e.changedTouches[0].clientY;
+        const endX = e.changedTouches[0].clientX;
+
+        const dy = Math.abs(endY - touchStartY.current);
+        const dx = Math.abs(endX - touchStartX.current);
+        const duration = Date.now() - touchStartTime.current;
+
+        const TAP_DISTANCE = 10;
+        const TAP_TIME = 250;
+
+        const isTap =
+            dx < TAP_DISTANCE &&
+            dy < TAP_DISTANCE &&
+            duration < TAP_TIME;
+
+        if (isTap && onTogglePlayPause) {
+            onTogglePlayPause();
+        }
+    };
+
     const ErrorFallback = () => (
         <div
             style={{
@@ -469,62 +439,14 @@ export default function TrailerCard({
         </div>
     );
 
-    const togglePlayback = () => {
-        if (!iframeReady || isLoading || loadError) return;
-
-        if (isPaused) {
-            sendCommand("playVideo");
-        } else {
-            sendCommand("pauseVideo");
-        }
-
-        setIsPaused(prev => !prev);
-
-        setShowPlaybackIcon(true);
-
-        if (playbackTimeout.current) {
-            clearTimeout(playbackTimeout.current);
-        }
-
-        playbackTimeout.current = window.setTimeout(() => {
-            setShowPlaybackIcon(false);
-        }, 500);
-    };
-
-    const handleTouchStartPlayback = (e: React.TouchEvent) => {
-        touchStartY.current = e.touches[0].clientY;
-        touchStartX.current = e.touches[0].clientX;
-        touchStartTime.current = Date.now();
-
-        handleShowControls();
-    };
-
-    const handleTouchEndPlayback = (e: React.TouchEvent) => {
-        const endY = e.changedTouches[0].clientY;
-        const endX = e.changedTouches[0].clientX;
-
-        const dy = Math.abs(endY - touchStartY.current);
-        const dx = Math.abs(endX - touchStartX.current);
-
-        const duration = Date.now() - touchStartTime.current;
-
-        const TAP_DISTANCE = 10;
-        const TAP_TIME = 250;
-
-        const isTap =
-            dx < TAP_DISTANCE &&
-            dy < TAP_DISTANCE &&
-            duration < TAP_TIME;
-
-        if (isTap) {
-            togglePlayback();
-        }
-    };
-
     return (
         <div
             className="trailer-root"
-            onClick={!isTouchDevice ? togglePlayback : undefined}
+            onClick={() => {
+                if (!isTouchDevice && isActive && onTogglePlayPause) {
+                    onTogglePlayPause();
+                }
+            }}
             onTouchStart={handleTouchStartPlayback}
             onTouchEnd={handleTouchEndPlayback}
             style={{
@@ -535,16 +457,8 @@ export default function TrailerCard({
             }}
             onMouseMove={handleShowControls}
         >
-            {/* Scoped responsive styles for the YouTube iframe crop */}
             <style>
                 {`
-                    /* 100vh on mobile includes space the browser's
-                       address bar / bottom toolbar is covering, so
-                       bottom-anchored content (the caption) can end up
-                       rendered under that chrome. 100dvh tracks the
-                       actual visible viewport instead. The vh line stays
-                       first as a fallback for browsers without dvh
-                       support - it's simply overridden where dvh works. */
                     .trailer-root {
                         height: 100vh;
                         height: 100dvh;
@@ -561,13 +475,6 @@ export default function TrailerCard({
                         border: 0;
                     }
 
-                    /* Below 582px: stop cropping the sides (so the player is
-                       true full-width) and instead crop top/bottom to hide
-                       YouTube's title bar + bottom control bar overlay.
-                       top: 50% + translateY(-50%) centers the enlarged
-                       iframe vertically no matter the container's actual
-                       height, instead of a fixed-pixel margin that only
-                       lined up on some screens. */
                     @media (max-width: 582px) {
                         .trailer-yt-iframe {
                             top: 50%;
@@ -578,23 +485,14 @@ export default function TrailerCard({
                             transform: translateY(-50%);
                         }
 
-                        /* Up/down arrow buttons are redundant on touch
-                           screens (swipe already navigates) and were
-                           cluttering small screens - hide them. */
                         .trailer-nav-arrows {
                             display: none !important;
                         }
 
-                        /* The keyboard hint only applies to desktop
-                           keyboard users - hide on small/touch screens. */
                         .trailer-keyboard-hint {
                             display: none !important;
                         }
 
-                        /* Pull the title/rating caption up and add a
-                           safe-area buffer so it isn't pushed low enough
-                           to be cropped by the browser's bottom UI
-                           (address bar / home-indicator) in portrait. */
                         .trailer-caption {
                             bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
                             right: 44px !important;
@@ -602,31 +500,17 @@ export default function TrailerCard({
                     }
 
                     @keyframes playFade {
-    0% {
-        opacity: 0;
-        transform: scale(.7);
-    }
-
-    20% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    100% {
-        opacity: 0;
-        transform: scale(1.15);
-    }
-}
+                        0% { opacity: 0; transform: scale(.7); }
+                        20% { opacity: 1; transform: scale(1); }
+                        100% { opacity: 0; transform: scale(1.15); }
+                    }
                 `}
             </style>
 
-            {/* Loading Spinner */}
             {isLoading && isActive && <Loader />}
 
-            {/* Error Fallback */}
             {loadError && isActive && <ErrorFallback />}
 
-            {/* YouTube Video with hidden interface */}
             {videoKey && !loadError && (
                 <div
                     style={{
@@ -657,106 +541,6 @@ export default function TrailerCard({
                 </div>
             )}
 
-            {/* Sound Indicator */}
-            {isActive && !isLoading && !loadError && (
-                <div
-                    style={{
-                        position: "absolute",
-                        bottom: 64,
-                        right: 14,
-                        zIndex: 20,
-                        cursor: "pointer",
-                        width: "34px",
-                        height: "34px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: "rgba(0,0,0,0.5)",
-                        borderRadius: "50%",
-                        backdropFilter: "blur(10px)",
-                        border: "1.5px solid rgba(255,255,255,0.2)",
-                        transition: "opacity 0.3s ease, background-color 0.3s ease, transform 0.3s ease",
-                        opacity: showControls ? 1 : 0,
-                        pointerEvents: showControls ? "auto" : "none",
-                        userSelect: "none",
-                    }}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleSound();
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.3)";
-                        e.currentTarget.style.transform = "scale(1.1)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.5)";
-                        e.currentTarget.style.transform = "scale(1)";
-                    }}
-                >
-                    {isMuted ? (
-                        <span style={{ fontSize: "15px" }}>🔇</span>
-                    ) : (
-                        <span style={{ fontSize: "15px" }}>🔊</span>
-                    )}
-                </div>
-            )}
-
-            {/* Fullscreen Toggle */}
-            {isActive && !isLoading && !loadError && (
-                <div
-                    style={{
-                        position: "absolute",
-                        bottom: 108,
-                        right: 14,
-                        zIndex: 20,
-                        cursor: "pointer",
-                        width: "34px",
-                        height: "34px",
-                        backgroundColor: "rgba(0,0,0,0.5)",
-                        borderRadius: "50%",
-                        backdropFilter: "blur(10px)",
-                        border: "1.5px solid rgba(255,255,255,0.2)",
-                        transition: "opacity 0.3s ease, background-color 0.3s ease, transform 0.3s ease",
-                        opacity: showControls ? 1 : 0,
-                        pointerEvents: showControls ? "auto" : "none",
-                        userSelect: "none",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleFullscreen();
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.3)";
-                        e.currentTarget.style.transform = "scale(1.1)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.5)";
-                        e.currentTarget.style.transform = "scale(1)";
-                    }}
-                    title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
-                >
-                    {isFullscreen ? (
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M8 3v3a2 2 0 0 1-2 2H3" />
-                            <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                            <path d="M3 16h3a2 2 0 0 1 2 2v3" />
-                            <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-                        </svg>
-                    ) : (
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
-                            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
-                            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
-                            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
-                        </svg>
-                    )}
-                </div>
-            )}
-
-            {/* Movie Info - small, caption-style */}
             {!isLoading && !loadError && (
                 <div
                     className="trailer-caption"
@@ -785,7 +569,6 @@ export default function TrailerCard({
                 </div>
             )}
 
-            {/* Navigation Arrows - Desktop */}
             {isActive && showControls && !isLoading && !loadError && (
                 <div
                     className="trailer-nav-arrows"
@@ -869,38 +652,6 @@ export default function TrailerCard({
                 </div>
             )}
 
-            {showPlaybackIcon && (
-                <div
-                    style={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        pointerEvents: "none",
-                        zIndex: 100,
-                    }}
-                >
-                    <div
-                        style={{
-                            width: 90,
-                            height: 90,
-                            borderRadius: "50%",
-                            background: "rgba(0,0,0,0.55)",
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center",
-                            fontSize: 40,
-                            color: "#fff",
-                            animation: "playFade .5s ease",
-                        }}
-                    >
-                        {isPaused ? "▶" : "❚❚"}
-                    </div>
-                </div>
-            )}
-
-            {/* Keyboard hint */}
             {isActive && showControls && !isLoading && !loadError && (
                 <div
                     className="trailer-keyboard-hint"
@@ -921,7 +672,5 @@ export default function TrailerCard({
                 </div>
             )}
         </div>
-
-
     );
 }

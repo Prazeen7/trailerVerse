@@ -28,6 +28,8 @@ export default function Home() {
     const [tvIndex, setTvIndex] = useState(0);
     const [movieLoading, setMovieLoading] = useState(true);
     const [tvLoading, setTvLoading] = useState(true);
+    const [isPaused, setIsPaused] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const switchingRef = useRef(false);
     const requestIdRef = useRef(0);
     const fetchControllerRef = useRef<AbortController | null>(null);
@@ -297,6 +299,14 @@ export default function Home() {
         setIsMuted(!isMuted);
     };
 
+    const togglePaused = () => {
+        setIsPaused(prev => !prev);
+    };
+
+    const toggleFullscreen = () => {
+        setIsFullscreen(prev => !prev);
+    };
+
 
     // Navigation functions
     const goToNext = () => {
@@ -313,6 +323,11 @@ export default function Home() {
 
     const handleNavigation = (index: number) => {
         if (switchingRef.current) return;
+
+        // Reset paused state so new card auto-plays
+        if (index !== currentIndex) {
+            setIsPaused(false);
+        }
 
         if (contentType === "movie") {
             setMovieIndex(index);
@@ -513,6 +528,12 @@ export default function Home() {
                 onChange={handleContentChange}
                 filterType={filterType}
                 onFilterChange={handleFilterChange}
+                isMuted={isMuted}
+                onToggleMute={toggleSound}
+                isPaused={isPaused}
+                onTogglePlayPause={togglePaused}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={toggleFullscreen}
             />
 
             <div
@@ -549,8 +570,11 @@ export default function Home() {
                                     currentIndex={index}
                                     totalMovies={moviesWithTrailers.length}
                                     isMuted={isMuted}
-                                    onToggleSound={toggleSound}
                                     contentType={contentType}
+                                    isPaused={isPaused}
+                                    isFullscreen={isFullscreen}
+                                    onFullscreenChange={setIsFullscreen}
+                                    onTogglePlayPause={togglePaused}
                                 />
                             ) : (
                                 <div

@@ -5,6 +5,12 @@ interface ContentToggleProps {
     onChange: (type: "movie" | "tv") => void;
     filterType: "now_playing" | "popular" | "top_rated" | "upcoming";
     onFilterChange: (filter: "now_playing" | "popular" | "top_rated" | "upcoming") => void;
+    isMuted: boolean;
+    onToggleMute: () => void;
+    isPaused: boolean;
+    onTogglePlayPause: () => void;
+    isFullscreen: boolean;
+    onToggleFullscreen: () => void;
 }
 
 export default function ContentToggle({
@@ -12,6 +18,12 @@ export default function ContentToggle({
     onChange,
     filterType,
     onFilterChange,
+    isMuted,
+    onToggleMute,
+    isPaused,
+    onTogglePlayPause,
+    isFullscreen,
+    onToggleFullscreen
 }: ContentToggleProps) {
     const [isVisible, setIsVisible] = useState(true);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -71,11 +83,11 @@ export default function ContentToggle({
         buttons.forEach((button) => {
             widths.push((button as HTMLElement).offsetWidth || 60);
         });
-        
+
         // Only update if widths have changed
-        const widthsChanged = widths.length !== buttonWidths.length || 
+        const widthsChanged = widths.length !== buttonWidths.length ||
             widths.some((w, i) => w !== buttonWidths[i]);
-        
+
         if (widthsChanged && widths.length > 0) {
             setButtonWidths(widths);
         }
@@ -96,7 +108,7 @@ export default function ContentToggle({
         const handleResize = () => {
             const mobile = window.innerWidth <= 768;
             setIsMobile(mobile);
-            
+
             // Recalculate widths after resize
             if (mobile) {
                 if (resizeTimeoutRef.current) {
@@ -284,6 +296,153 @@ export default function ContentToggle({
                 </div>
             </div>
 
+            {/* Video Control Buttons - Fixed at bottom center */}
+            <div
+                style={{
+                    display: "flex",
+                    flexDirection: isMobile ? "column" : "row",
+                    justifyContent: "flex-end",
+                    alignItems: "center",
+                    gap: isMobile ? 8 : 12,
+                    position: "fixed",
+                    bottom: window.innerWidth < 768 ? 60 : 50,
+                    right: window.innerWidth < 768 ? 12 : 220,
+                    zIndex: 1001,
+                    opacity: isVisible ? 1 : 0,
+                    pointerEvents: isVisible ? "auto" : "none",
+                    transition: "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
+                    transform: !isVisible ? "translateY(20px)" : "translateY(0)",
+                }}
+            >
+                {/* Play/Pause */}
+                <button
+                    className="glass-control-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onTogglePlayPause();
+                    }}
+                    style={{
+                        width: isMobile ? 40 : 44,
+                        height: isMobile ? 40 : 44,
+                        borderRadius: "50%",
+
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+
+                        cursor: "pointer",
+                        color: "#fff",
+
+                        // Glass morphism
+                        background: "rgba(255, 255, 255, 0.12)",
+                        backdropFilter: "blur(24px) saturate(180%)",
+                        WebkitBackdropFilter: "blur(24px) saturate(180%)",
+
+                        border: "1px solid rgba(255,255,255,0.18)",
+
+                        boxShadow:
+                            "0 8px 24px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.18)",
+
+                        transition: "all 0.25s ease",
+                    }}
+                >
+                    {isPaused ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
+                    )}
+                </button>
+
+                {/* Mute */}
+                <button
+                    className="glass-control-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleMute();
+                    }}
+                    style={{
+                        width: isMobile ? 40 : 44,
+                        height: isMobile ? 40 : 44,
+                        borderRadius: "50%",
+
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+
+                        cursor: "pointer",
+                        color: "#fff",
+
+                        // Glass morphism
+                        background: "rgba(255, 255, 255, 0.12)",
+                        backdropFilter: "blur(24px) saturate(180%)",
+                        WebkitBackdropFilter: "blur(24px) saturate(180%)",
+
+                        border: "1px solid rgba(255,255,255,0.18)",
+
+                        boxShadow:
+                            "0 8px 24px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.18)",
+
+                        transition: "all 0.25s ease",
+                    }}
+                >
+                    {isMuted ? "🔇" : "🔊"}
+                </button>
+
+                {/* Fullscreen */}
+                <button
+                    className="glass-control-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleFullscreen();
+                    }}
+                    style={{
+                        width: isMobile ? 40 : 44,
+                        height: isMobile ? 40 : 44,
+                        borderRadius: "50%",
+
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+
+                        cursor: "pointer",
+                        color: "#fff",
+
+                        // Glass morphism
+                        background: "rgba(255, 255, 255, 0.12)",
+                        backdropFilter: "blur(24px) saturate(180%)",
+                        WebkitBackdropFilter: "blur(24px) saturate(180%)",
+
+                        border: "1px solid rgba(255,255,255,0.18)",
+
+                        boxShadow:
+                            "0 8px 24px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.18)",
+
+                        transition: "all 0.25s ease",
+                    }}
+                    title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+                >
+                    {isFullscreen ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+                            <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                            <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+                            <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+                        </svg>
+                    ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                            <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                        </svg>
+                    )}
+                </button>
+            </div>
+
             {/* Filter Tabs with Glass Style and Mobile Sliding */}
             <div
                 style={{
@@ -375,8 +534,8 @@ export default function ContentToggle({
                                     borderRadius: isMobile ? 10 : 10,
                                     border: "none",
                                     background: "transparent",
-                                    color: isActive 
-                                        ? "#000" 
+                                    color: isActive
+                                        ? "#000"
                                         : "rgba(255, 255, 255, 0.75)",
                                     fontWeight: isActive ? 600 : 500,
                                     fontSize: isMobile ? 10 : 14,
