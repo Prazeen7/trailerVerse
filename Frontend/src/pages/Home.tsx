@@ -19,7 +19,6 @@ export default function Home() {
     const touchStartY = useRef(0);
     const touchStartTime = useRef(0);
     const fetchingMoreRef = useRef(false);
-    const pageRef = useRef(1);
     const [contentType, setContentType] = useState<"movie" | "tv">("movie");
     const [filterType, setFilterType] = useState<"now_playing" | "popular" | "top_rated" | "upcoming">("now_playing");
     const [initialLoading, setInitialLoading] = useState(true);
@@ -30,6 +29,22 @@ export default function Home() {
     const [movieLoading, setMovieLoading] = useState(true);
     const [tvLoading, setTvLoading] = useState(true);
     const switchingRef = useRef(false);
+    const requestIdRef = useRef(0);
+    const fetchControllerRef = useRef<AbortController | null>(null);
+    const pageRef = useRef({
+        movie: {
+            now_playing: 1,
+            popular: 1,
+            top_rated: 1,
+            upcoming: 1,
+        },
+        tv: {
+            now_playing: 1,
+            popular: 1,
+            top_rated: 1,
+            upcoming: 1,
+        },
+    });
 
     const PRELOAD_THRESHOLD = 10;
     const currentIndex =
@@ -46,7 +61,7 @@ export default function Home() {
     const isLoading =
         contentType === "movie"
             ? movieLoading
-            : tvLoading;0
+            : tvLoading;
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -63,6 +78,15 @@ export default function Home() {
         type: "movie" | "tv",
         filter: "now_playing" | "popular" | "top_rated" | "upcoming" = "now_playing"
     ) => {
+        const requestId = ++requestIdRef.current;
+
+        if (page === 1 || !fetchControllerRef.current) {
+            fetchControllerRef.current?.abort();
+            fetchControllerRef.current = new AbortController();
+        }
+
+        const signal = fetchControllerRef.current?.signal;
+
         try {
             let items: any[] = [];
             if (page === 1) {
@@ -81,23 +105,33 @@ export default function Home() {
             } as const;
 
             if (type === "movie") {
-                const response = await api.get(`/movies/${filter}/movie/${page}`);
+                const response = await api.get(`/movies/${filter}/movie/${page}`,
+                    { signal });
                 items = response.data.results;
+                if (requestId !== requestIdRef.current) return;
             } else {
                 const tvFilter = tvFilterMap[filter];
 
-                const response = await api.get(`/tv/tv/${tvFilter}/${page}`);
+                const response = await api.get(`/tv/tv/${tvFilter}/${page}`, { signal });
                 items = response.data.results;
+                if (requestId !== requestIdRef.current) return;
             }
 
             const trailerChecks = items.map(async (item: any) => {
                 try {
-                    const trailer = await api.get(`/trailer/${type}/${item.id}`);
+                    const trailer = await api.get(`/trailer/${type}/${item.id}`, { signal });
 
                     if (trailer.data?.data?.key) {
                         return item;
                     }
-                } catch {
+                } catch (err: any) {
+                    if (
+                        err.code === "ERR_CANCELED" ||
+                        err.name === "CanceledError"
+                    ) {
+                        return null;
+                    }
+
                     return null;
                 }
 
@@ -106,10 +140,13 @@ export default function Home() {
 
             const results = await Promise.all(trailerChecks);
 
+            if (requestId !== requestIdRef.current) return;
+
             const itemsWithTrailer = results.filter(Boolean);
 
             if (type === "movie") {
                 if (page === 1) {
+                    if (requestId !== requestIdRef.current) return;
                     setMovieTrailers(itemsWithTrailer);
                 } else {
                     setMovieTrailers(prev => {
@@ -122,6 +159,7 @@ export default function Home() {
                 }
             } else {
                 if (page === 1) {
+                    if (requestId !== requestIdRef.current) return;
                     setTvTrailers(itemsWithTrailer);
                 } else {
                     setTvTrailers(prev => {
@@ -133,19 +171,37 @@ export default function Home() {
                     });
                 }
             }
-        } finally {
-            if (type === "movie") {
-                setMovieLoading(false);
-            } else {
-                setTvLoading(false);
+        } catch (err: any) {
+
+            if (
+                err.code === "ERR_CANCELED" ||
+                err.name === "CanceledError"
+            ) {
+                return;
             }
 
+            console.error(err);
+        } finally {
+            if (requestId === requestIdRef.current) {
 
-            if (initialLoading) {
-                setInitialLoading(false);
+                if (type === "movie") {
+                    setMovieLoading(false);
+                } else {
+                    setTvLoading(false);
+                }
+
+                if (initialLoading) {
+                    setInitialLoading(false);
+                }
             }
         }
     };
+
+    useEffect(() => {
+        return () => {
+            fetchControllerRef.current?.abort();
+        };
+    }, []);
 
 
     useEffect(() => {
@@ -156,8 +212,10 @@ export default function Home() {
         ) {
             fetchingMoreRef.current = true;
 
-            const nextPage = pageRef.current + 1;
-            pageRef.current = nextPage;
+            const nextPage =
+                pageRef.current[contentType][filterType] + 1;
+
+            pageRef.current[contentType][filterType] = nextPage;
 
             fetchContent(nextPage, contentType, filterType).finally(() => {
                 fetchingMoreRef.current = false;
@@ -167,7 +225,7 @@ export default function Home() {
 
     // Fetch when filter changes
     useEffect(() => {
-        pageRef.current = 1;
+        pageRef.current[contentType][filterType] = 1;
         setMovieIndex(0);
         setTvIndex(0);
 
@@ -188,7 +246,7 @@ export default function Home() {
     };
 
     useEffect(() => {
-        pageRef.current = 1;
+        pageRef.current[contentType][filterType] = 1;
 
         if (
             contentType === "movie" &&

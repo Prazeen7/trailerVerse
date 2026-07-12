@@ -3,8 +3,11 @@ import tmdb from "../config/tmdb";
 export const getOfficialTrailer = async (
     type: "movie" | "tv",
     id: string
+    , signal?: AbortSignal
 ) => {
-    const response = await tmdb.get(`/${type}/${id}/videos`);
+    const response = await tmdb.get(`/${type}/${id}/videos`, {
+        signal,
+    });;
 
     const videos = response.data.results;
 

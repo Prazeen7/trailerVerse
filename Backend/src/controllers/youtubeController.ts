@@ -10,10 +10,14 @@ export const fetchTrailer = async (
     req: Request<TrailerParams>,
     res: Response
 ): Promise<void> => {
+    const controller = new AbortController();
+    req.on("close", () => {
+        controller.abort();
+    });
     try {
         const { type, id } = req.params;
 
-        const trailer = await getOfficialTrailer(type, id);
+        const trailer = await getOfficialTrailer(type, id, controller.signal);
 
         if (!trailer) {
             res.status(404).json({
