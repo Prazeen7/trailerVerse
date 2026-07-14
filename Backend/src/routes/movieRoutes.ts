@@ -4,8 +4,8 @@ import { fetchTrendingMovies, fetchPopularMovies, fetchNowPlayingMovies, fetchTo
 const router = Router();
 
 router.get("/trending/movie", fetchTrendingMovies);
-router.get("/popular/movie/:pid", fetchPopularMovies);
-router.get("/now_playing/movie/:pid", fetchNowPlayingMovies);
-router.get("/upcoming/movie/:pid", fetchUpcomingMovies);
-router.get("/top_rated/movie/:pid", fetchTopRatedMovies);
+router.get("/popular/movie", fetchPopularMovies);
+router.get("/now_playing/movie", fetchNowPlayingMovies);
+router.get("/upcoming/movie", fetchUpcomingMovies);
+router.get("/top_rated/movie", fetchTopRatedMovies);
 export default router;

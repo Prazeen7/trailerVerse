@@ -1,10 +1,6 @@
 import { Request, Response } from 'express';
 import { getTrendingMovies, getPopularMovies, getNowPlayingMovies, getUpcomingMovies, getTopRatedMovies } from '../services/movieService';
 
-interface MovieParams {
-    pid: string;
-}
-
 export const fetchTrendingMovies = async (
     req: Request,
     res: Response
@@ -37,17 +33,27 @@ export const fetchTrendingMovies = async (
     }
 };
 
+
 export const fetchPopularMovies = async (
-    req: Request<MovieParams>,
+    req: Request,
     res: Response
 ): Promise<void> => {
+
+    const excludePages: number[] =
+        typeof req.query.excludePages === "string"
+            ? req.query.excludePages
+                .split(",")
+                .map(Number)
+                .filter(Number.isFinite)
+            : [];
+
     const controller = new AbortController();
     req.on("close", () => {
         controller.abort();
     });
     try {
-        const { pid } = req.params;
-        const movies = await getPopularMovies(pid, controller.signal);
+        const movies = await getPopularMovies(excludePages,
+            controller.signal);
 
         if (!res.headersSent) {
             res.status(200).json(movies);
@@ -70,16 +76,25 @@ export const fetchPopularMovies = async (
 };
 
 export const fetchNowPlayingMovies = async (
-    req: Request<MovieParams>,
+    req: Request,
     res: Response
 ): Promise<void> => {
+
+    const excludePages: number[] =
+        typeof req.query.excludePages === "string"
+            ? req.query.excludePages
+                .split(",")
+                .map(Number)
+                .filter(Number.isFinite)
+            : [];
+
     const controller = new AbortController();
     req.on("close", () => {
         controller.abort();
     });
     try {
-        const { pid } = req.params;
-        const movies = await getNowPlayingMovies(pid, controller.signal);
+        const movies = await getNowPlayingMovies(excludePages,
+    controller.signal);
 
         if (!res.headersSent) {
             res.status(200).json(movies);
@@ -102,16 +117,24 @@ export const fetchNowPlayingMovies = async (
 };
 
 export const fetchUpcomingMovies = async (
-    req: Request<MovieParams>,
+    req: Request,
     res: Response
 ): Promise<void> => {
+    const excludePages: number[] =
+        typeof req.query.excludePages === "string"
+            ? req.query.excludePages
+                .split(",")
+                .map(Number)
+                .filter(Number.isFinite)
+            : [];
+
     const controller = new AbortController();
     req.on("close", () => {
         controller.abort();
     });
     try {
-        const { pid } = req.params;
-        const movies = await getUpcomingMovies(pid, controller.signal);
+        const movies = await getUpcomingMovies(excludePages,
+    controller.signal);
         if (!res.headersSent) {
             res.status(200).json(movies);
         }
@@ -133,16 +156,24 @@ export const fetchUpcomingMovies = async (
 };
 
 export const fetchTopRatedMovies = async (
-    req: Request<MovieParams>,
+    req: Request,
     res: Response
 ): Promise<void> => {
+    const excludePages: number[] =
+        typeof req.query.excludePages === "string"
+            ? req.query.excludePages
+                .split(",")
+                .map(Number)
+                .filter(Number.isFinite)
+            : [];
+
     const controller = new AbortController();
     req.on("close", () => {
         controller.abort();
     });
     try {
-        const { pid } = req.params;
-        const movies = await getTopRatedMovies(pid, controller.signal);
+        const movies = await getTopRatedMovies(excludePages,
+    controller.signal);
 
         if (!res.headersSent) {
             res.status(200).json(movies);

@@ -41,13 +41,21 @@ export const fetchPopularTVShows = async (
     req: Request<TVParams>,
     res: Response
 ): Promise<void> => {
+    const excludePages: number[] =
+        typeof req.query.excludePages === "string"
+            ? req.query.excludePages
+                .split(",")
+                .map(Number)
+                .filter(Number.isFinite)
+            : [];
+
     const controller = new AbortController();
     req.on("close", () => {
         controller.abort();
     });
     try {
         const { pid } = req.params;
-        const shows = await getPopularTVShows(pid, controller.signal);
+        const shows = await getPopularTVShows(excludePages, controller.signal);
         if (!res.headersSent) {
             res.status(200).json(shows);
         }
@@ -72,13 +80,21 @@ export const fetchNowPlayingTVShows = async (
     req: Request<TVParams>,
     res: Response
 ): Promise<void> => {
+    const excludePages: number[] =
+        typeof req.query.excludePages === "string"
+            ? req.query.excludePages
+                .split(",")
+                .map(Number)
+                .filter(Number.isFinite)
+            : [];
+
     const controller = new AbortController();
     req.on("close", () => {
         controller.abort();
     });
     try {
         const { pid } = req.params;
-        const shows = await getNowPlayingTVShows(pid, controller.signal);
+        const shows = await getNowPlayingTVShows(excludePages, controller.signal);
 
         if (!res.headersSent) {
             res.status(200).json(shows);
@@ -103,13 +119,20 @@ export const fetchOnTheAirTVShows = async (
     req: Request<TVParams>,
     res: Response
 ): Promise<void> => {
+    const excludePages: number[] =
+        typeof req.query.excludePages === "string"
+            ? req.query.excludePages
+                .split(",")
+                .map(Number)
+                .filter(Number.isFinite)
+            : [];
     const controller = new AbortController();
     req.on("close", () => {
         controller.abort();
     });
     try {
         const { pid } = req.params;
-        const shows = await getOnTheAirTVShows(pid, controller.signal);
+        const shows = await getOnTheAirTVShows(excludePages, controller.signal);
 
         if (!res.headersSent) {
             res.status(200).json(shows);
@@ -135,13 +158,20 @@ export const fetchTopRatedTVShows = async (
     req: Request<TVParams>,
     res: Response
 ): Promise<void> => {
+    const excludePages: number[] =
+        typeof req.query.excludePages === "string"
+            ? req.query.excludePages
+                .split(",")
+                .map(Number)
+                .filter(Number.isFinite)
+            : [];
     const controller = new AbortController();
     req.on("close", () => {
         controller.abort();
     });
     try {
         const { pid } = req.params;
-        const shows = await getTopRatedTVShows(pid, controller.signal);
+        const shows = await getTopRatedTVShows(excludePages, controller.signal);
 
         if (!res.headersSent) {
             res.status(200).json(shows);

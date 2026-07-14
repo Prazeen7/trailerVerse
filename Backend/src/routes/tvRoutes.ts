@@ -4,8 +4,8 @@ import { fetchPopularTVShows, fetchTrendingTVShows, fetchNowPlayingTVShows, fetc
 const router = Router();
 
 router.get("/trending/tv", fetchTrendingTVShows);
-router.get("/tv/airing_today/:pid", fetchNowPlayingTVShows);
-router.get("/tv/on_the_air/:pid", fetchOnTheAirTVShows);
-router.get("/tv/popular/:pid", fetchPopularTVShows);
-router.get("/tv/top_rated/:pid", fetchTopRatedTVShows);
+router.get("/tv/airing_today", fetchNowPlayingTVShows);
+router.get("/tv/on_the_air", fetchOnTheAirTVShows);
+router.get("/tv/popular", fetchPopularTVShows);
+router.get("/tv/top_rated", fetchTopRatedTVShows);
 export default router;

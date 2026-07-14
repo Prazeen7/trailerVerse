@@ -1,41 +1,43 @@
 import tmdb from "../config/tmdb";
+import { getRandomPageData, shuffleArray, endpointCache, } from './movieService'
 
 export const getTrendingTVShows = async (signal?: AbortSignal) => {
-    const response = await tmdb.get("/trending/tv/day", {
-        signal,
-    });
+    const response = await tmdb.get("/trending/tv/day", { signal });
 
-    return response.data;
+    return {
+        ...response.data,
+        results: shuffleArray(response.data.results),
+    };
 }
 
-export const getPopularTVShows = async (pid: string, signal?: AbortSignal) => {
-    const response = await tmdb.get(`/tv/popular?&page=${pid}`, {
+export const getPopularTVShows = async (excludePages: number[] = [],
+    signal?: AbortSignal) => {
+    return getRandomPageData(`/tv/popular`, {
+        excludePages,
         signal,
     });
-
-    return response.data;
 }
 
-export const getNowPlayingTVShows = async (pid: string, signal?: AbortSignal) => {
-    const response = await tmdb.get(`/tv/airing_today?&page=${pid}`, {
+export const getNowPlayingTVShows = async (excludePages: number[] = [],
+    signal?: AbortSignal) => {
+    return getRandomPageData(`/tv/airing_today`, {
+        excludePages,
         signal,
     });
+};
 
-    return response.data;
-}
-    
-export const getOnTheAirTVShows = async (pid: string, signal?: AbortSignal) => {
-    const response = await tmdb.get(`/tv/on_the_air?&page=${pid}`, {
+export const getOnTheAirTVShows = async (excludePages: number[] = [],
+    signal?: AbortSignal) => {
+    return getRandomPageData(`/tv/on_the_air`, {
+        excludePages,
         signal,
     });
+};
 
-    return response.data;
-}
-
-export const getTopRatedTVShows = async (pid: string, signal?: AbortSignal) => {
-    const response = await tmdb.get(`/tv/top_rated?&page=${pid}`, {
+export const getTopRatedTVShows = async (excludePages: number[] = [],
+    signal?: AbortSignal) => {
+    return getRandomPageData(`/tv/top_rated?`, {
+        excludePages,
         signal,
     });
-
-    return response.data;
-}
+};

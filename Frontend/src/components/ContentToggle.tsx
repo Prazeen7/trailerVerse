@@ -135,7 +135,6 @@ export default function ContentToggle({
 
     // Visibility transforms per element & mode 
     // Content toggle: slides up when hidden
-    const ctHide = "translateY(-130%)";
     const ctShow = isLandscape ? "translateY(0)" : `translateX(-50%) translateY(0)`;
     const ctHideF = isLandscape ? `translateY(-130%)` : `translateX(-50%) translateY(-130%)`;
 

@@ -29,29 +29,14 @@ export default function Home() {
     const [movieLoading, setMovieLoading] = useState(true);
     const [tvLoading, setTvLoading] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
-    const isPausedRef = useRef(false); 
+    const isPausedRef = useRef(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const inactivityTimeoutRef = useRef<number | null>(null);
     const switchingRef = useRef(false);
     const requestIdRef = useRef(0);
     const fetchControllerRef = useRef<AbortController | null>(null);
-    const pageRef = useRef({
-        movie: {
-            now_playing: 1,
-            popular: 1,
-            top_rated: 1,
-            upcoming: 1,
-        },
-        tv: {
-            now_playing: 1,
-            popular: 1,
-            top_rated: 1,
-            upcoming: 1,
-        },
-    });
 
-    const PRELOAD_THRESHOLD = 10;
     const currentIndex =
         contentType === "movie"
             ? movieIndex
@@ -68,6 +53,43 @@ export default function Home() {
             ? movieLoading
             : tvLoading;
 
+    const getStorageKey = (
+        type: "movie" | "tv",
+        filter: "now_playing" | "popular" | "top_rated" | "upcoming"
+    ) => `used-pages-${type}-${filter}`;
+
+    const getUsedPages = (
+        type: "movie" | "tv",
+        filter: "now_playing" | "popular" | "top_rated" | "upcoming"
+    ): number[] => {
+        try {
+            const stored = localStorage.getItem(
+                getStorageKey(type, filter)
+            );
+
+            return stored ? JSON.parse(stored) : [];
+        } catch {
+            return [];
+        }
+    };
+
+    const saveUsedPage = (
+        type: "movie" | "tv",
+        filter: "now_playing" | "popular" | "top_rated" | "upcoming",
+        page: number
+    ) => {
+        const pages = getUsedPages(type, filter);
+
+        if (!pages.includes(page)) {
+            pages.push(page);
+
+            localStorage.setItem(
+                getStorageKey(type, filter),
+                JSON.stringify(pages)
+            );
+        }
+    };
+
     useEffect(() => {
         if (!containerRef.current) return;
 
@@ -79,27 +101,25 @@ export default function Home() {
     }, [contentType, currentIndex]);
 
     const fetchContent = async (
-        page: number,
         type: "movie" | "tv",
         filter: "now_playing" | "popular" | "top_rated" | "upcoming" = "now_playing"
     ) => {
         const requestId = ++requestIdRef.current;
 
-        if (page === 1 || !fetchControllerRef.current) {
-            fetchControllerRef.current?.abort();
-            fetchControllerRef.current = new AbortController();
-        }
+        fetchControllerRef.current?.abort();
 
-        const signal = fetchControllerRef.current?.signal;
+        const controller = new AbortController();
+        fetchControllerRef.current = controller;
+
+        const signal = controller.signal;
 
         try {
+            const usedPages = getUsedPages(type, filter);
             let items: any[] = [];
-            if (page === 1) {
-                if (type === "movie") {
-                    setMovieLoading(true);
-                } else {
-                    setTvLoading(true);
-                }
+            if (type === "movie") {
+                setMovieLoading(true);
+            } else {
+                setTvLoading(true);
             }
 
             const tvFilterMap = {
@@ -110,15 +130,43 @@ export default function Home() {
             } as const;
 
             if (type === "movie") {
-                const response = await api.get(`/movies/${filter}/movie/${page}`,
-                    { signal });
+                const response = await api.get(
+                    `/movies/${filter}/movie`,
+                    {
+                        signal,
+                        params: {
+                            excludePages: usedPages.join(","),
+                        },
+                    }
+                );
                 items = response.data.results;
+                saveUsedPage(
+                    type,
+                    filter,
+                    response.data.page
+                );
                 if (requestId !== requestIdRef.current) return;
             } else {
                 const tvFilter = tvFilterMap[filter];
 
-                const response = await api.get(`/tv/tv/${tvFilter}/${page}`, { signal });
+                const response = await api.get(
+                    `/tv/tv/${tvFilter}`,
+                    {
+                        signal,
+                        params: {
+                            excludePages: usedPages.join(","),
+                        },
+                    }
+                );
+
                 items = response.data.results;
+
+                saveUsedPage(
+                    type,
+                    filter,
+                    response.data.page
+                );
+
                 if (requestId !== requestIdRef.current) return;
             }
 
@@ -150,31 +198,23 @@ export default function Home() {
             const itemsWithTrailer = results.filter(Boolean);
 
             if (type === "movie") {
-                if (page === 1) {
-                    if (requestId !== requestIdRef.current) return;
-                    setMovieTrailers(itemsWithTrailer);
-                } else {
-                    setMovieTrailers(prev => {
-                        const merged = [...prev, ...itemsWithTrailer];
+                setMovieTrailers(prev => {
+                    const unique = new Map<number, Movie>();
 
-                        return Array.from(
-                            new Map(merged.map(item => [item.id, item])).values()
-                        );
-                    });
-                }
+                    prev.forEach(movie => unique.set(movie.id, movie));
+                    itemsWithTrailer.forEach(movie => unique.set(movie.id, movie));
+
+                    return [...unique.values()];
+                });
             } else {
-                if (page === 1) {
-                    if (requestId !== requestIdRef.current) return;
-                    setTvTrailers(itemsWithTrailer);
-                } else {
-                    setTvTrailers(prev => {
-                        const merged = [...prev, ...itemsWithTrailer];
+                setTvTrailers(prev => {
+                    const unique = new Map<number, Movie>();
 
-                        return Array.from(
-                            new Map(merged.map(item => [item.id, item])).values()
-                        );
-                    });
-                }
+                    prev.forEach(movie => unique.set(movie.id, movie));
+                    itemsWithTrailer.forEach(movie => unique.set(movie.id, movie));
+
+                    return [...unique.values()];
+                });
             }
         } catch (err: any) {
 
@@ -255,28 +295,35 @@ export default function Home() {
     }, [isPaused]);
 
 
+    // lazy load
     useEffect(() => {
+
         if (
-            moviesWithTrailers.length > 0 &&
-            currentIndex >= moviesWithTrailers.length - PRELOAD_THRESHOLD &&
+            moviesWithTrailers.length === 0 ||
+            fetchingMoreRef.current
+        ) {
+            return;
+        }
+
+        if (
+            currentIndex >= moviesWithTrailers.length - 5 &&
             !fetchingMoreRef.current
         ) {
             fetchingMoreRef.current = true;
 
-            const nextPage =
-                pageRef.current[contentType][filterType] + 1;
-
-            pageRef.current[contentType][filterType] = nextPage;
-
-            fetchContent(nextPage, contentType, filterType).finally(() => {
+            fetchContent(contentType, filterType).finally(() => {
                 fetchingMoreRef.current = false;
             });
         }
-    }, [currentIndex, moviesWithTrailers.length, contentType, filterType]);
+    }, [
+        currentIndex,
+        moviesWithTrailers.length,
+        contentType,
+        filterType,
+    ]);
 
     // Fetch when filter changes
     useEffect(() => {
-        pageRef.current[contentType][filterType] = 1;
         setMovieIndex(0);
         setTvIndex(0);
 
@@ -289,35 +336,13 @@ export default function Home() {
             setTvLoading(true);
         }
 
-        fetchContent(1, contentType, filterType);
+        fetchContent(contentType, filterType);
     }, [filterType, contentType]);
 
     const handleFilterChange = (filter: "now_playing" | "popular" | "top_rated" | "upcoming") => {
         setFilterType(filter);
     };
 
-    useEffect(() => {
-        pageRef.current[contentType][filterType] = 1;
-
-        if (
-            contentType === "movie" &&
-            movieTrailers.length === 0
-        ) {
-            fetchContent(1, contentType, filterType);
-        }
-
-        if (
-            contentType === "tv" &&
-            tvTrailers.length === 0
-        ) {
-            fetchContent(1, contentType, filterType);
-        }
-
-    }, [
-        contentType,
-        movieTrailers.length,
-        tvTrailers.length
-    ]);
 
     // Manage loaded indices - keep previous 5, current, and next 5 (11 total)
     useEffect(() => {
@@ -406,6 +431,7 @@ export default function Home() {
 
         e.preventDefault();
         e.stopPropagation();
+        handleNavigation(nextIndex);
 
     };
 
@@ -485,20 +511,6 @@ export default function Home() {
             container.removeEventListener("touchend", handleTouchEnd);
         };
     }, [currentIndex, moviesWithTrailers.length, isTransitioning]);
-
-    // Reset transform when movies change
-    useEffect(() => {
-        if (containerRef.current && moviesWithTrailers.length > 0) {
-            containerRef.current.style.transition = "none";
-            containerRef.current.style.transform = "translateY(0)";
-
-            const initialIndices = new Set<number>();
-            for (let i = 0; i < Math.min(11, moviesWithTrailers.length); i++) {
-                initialIndices.add(i);
-            }
-            setLoadedIndices(initialIndices);
-        }
-    }, []);
 
 
     // Loading state
