@@ -95,6 +95,8 @@ export default function Home() {
         }
     };
 
+    console.log(region);
+
     useEffect(() => {
         if (!containerRef.current) return;
 

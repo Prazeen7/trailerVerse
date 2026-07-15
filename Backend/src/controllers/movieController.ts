@@ -68,7 +68,10 @@ export const fetchPopularMovies = async (
         );
 
         if (!res.headersSent) {
-            res.status(200).json(movies);
+            res.status(200).json({
+                ...movies,
+                region,
+            });
         }
     } catch (error: any) {
 
@@ -92,6 +95,9 @@ export const fetchNowPlayingMovies = async (
     res: Response
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
+
+    console.log("IP:", req.ip);
+    console.log("Region:", region);
 
     const genre =
         typeof req.query.genre === "string"
