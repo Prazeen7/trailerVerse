@@ -10,8 +10,8 @@ dotenv.config();
 
 // Middleware
 const allowedOrigins = (process.env.FRONTEND_URL || "")
-  .split(",")
-  .map(origin => origin.trim());
+    .split(",")
+    .map(origin => origin.trim());
 
 app.use(
     cors({
@@ -29,6 +29,8 @@ app.get('/', (_req, res) => {
         message: "TrailerVerse API is running",
     });
 });
+
+app.set("trust proxy", true);
 
 app.use("/api/movies", movieRoutes)
 app.use("/api/trailer", youtubeRoutes);
