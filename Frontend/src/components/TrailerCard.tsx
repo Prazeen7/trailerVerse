@@ -509,7 +509,7 @@ export default function TrailerCard({
                         {movie.title || movie.name}
                     </h2>
                     <p style={{ fontSize: "11px", opacity: 0.85 }}>
-                        ⭐ {movie.vote_count >= 100
+                        ⭐ {movie.vote_count >= 20
                             ? movie.vote_average.toFixed(1)
                             : "N/A"}{" "}
                         | {movie.release_date || movie.first_air_date}

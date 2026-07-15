@@ -81,18 +81,23 @@ export default function Home() {
         type: "movie" | "tv",
         filter: "now_playing" | "popular" | "top_rated" | "upcoming",
         page: number,
+        totalPages: number,
         genre?: number
     ) => {
-        const pages = getUsedPages(type, filter, genre);
+        const key = getStorageKey(type, filter, genre);
+
+        let pages = getUsedPages(type, filter, genre);
 
         if (!pages.includes(page)) {
             pages.push(page);
-
-            localStorage.setItem(
-                getStorageKey(type, filter, genre),
-                JSON.stringify(pages)
-            );
         }
+
+        // Reset once we've visited every page
+        if (pages.length >= totalPages) {
+            pages = [page];
+        }
+
+        localStorage.setItem(key, JSON.stringify(pages));
     };
 
     useEffect(() => {
@@ -151,6 +156,7 @@ export default function Home() {
                     type,
                     filter,
                     response.data.page,
+                    response.data.total_pages,
                     genre
                 );
                 if (requestId !== requestIdRef.current) return;
@@ -174,6 +180,7 @@ export default function Home() {
                     type,
                     filter,
                     response.data.page,
+                    response.data.total_pages,
                     genre
                 );
 
@@ -304,6 +311,8 @@ export default function Home() {
         }
     }, [isPaused]);
 
+    const PREFETCH_THRESHOLD =
+        genre !== undefined ? 10 : 5;
 
     // lazy load
     useEffect(() => {
@@ -316,7 +325,7 @@ export default function Home() {
         }
 
         if (
-            currentIndex >= moviesWithTrailers.length - 5 &&
+            currentIndex >= moviesWithTrailers.length - PREFETCH_THRESHOLD &&
             !fetchingMoreRef.current
         ) {
             fetchingMoreRef.current = true;
@@ -536,36 +545,6 @@ export default function Home() {
         );
     }
 
-    if (!isLoading && moviesWithTrailers.length === 0) {
-        return (
-            <div
-                style={{
-                    height: "100vh",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "#000",
-                    color: "#fff",
-                    padding: "20px",
-                }}
-            >
-                <div style={{ fontSize: "48px", marginBottom: "16px" }}>🎬</div>
-                <h2 style={{ fontSize: "24px", marginBottom: "8px" }}>
-                    No trailers available
-                </h2>
-                <p
-                    style={{
-                        color: "rgba(255,255,255,0.6)",
-                        textAlign: "center",
-                    }}
-                >
-                    No trailers found.
-                </p>
-            </div>
-        );
-    }
-
     const handleContentChange = (type: "movie" | "tv") => {
         if (type === contentType) return;
 
@@ -577,6 +556,65 @@ export default function Home() {
             switchingRef.current = false;
         }, 300);
     };
+
+    if (!isLoading && moviesWithTrailers.length === 0) {
+        return (
+            <>
+                <ContentToggle
+                    contentType={contentType}
+                    onChange={handleContentChange}
+                    filterType={filterType}
+                    onFilterChange={handleFilterChange}
+                    isMuted={isMuted}
+                    onToggleMute={toggleSound}
+                    isPaused={isPaused}
+                    onTogglePlayPause={togglePaused}
+                    isFullscreen={isFullscreen}
+                    onToggleFullscreen={toggleFullscreen}
+                    isVisible={isVisible}
+                    onActivity={showUIControls}
+                    genre={genre}
+                    onGenreChange={setGenre}
+                    region={region}
+                />
+
+                <div
+                    style={{
+                        height: "100vh",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#000",
+                        color: "#fff",
+                        padding: "20px",
+                    }}
+                >
+                    <div style={{ fontSize: "48px", marginBottom: "16px" }}>
+                        🎬
+                    </div>
+
+                    <h2
+                        style={{
+                            fontSize: "24px",
+                            marginBottom: "8px",
+                        }}
+                    >
+                        No trailers available
+                    </h2>
+
+                    <p
+                        style={{
+                            color: "rgba(255,255,255,0.6)",
+                            textAlign: "center",
+                        }}
+                    >
+                        No trailers found.
+                    </p>
+                </div>
+            </>
+        );
+    }
 
 
 

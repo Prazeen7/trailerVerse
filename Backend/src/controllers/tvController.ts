@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
 import { getTrendingTVShows, getPopularTVShows, getNowPlayingTVShows, getTopRatedTVShows, getOnTheAirTVShows } from '../services/tvService';
 import { getRegionFromIp } from '../services/locationService';
-interface TVParams {
-    pid: string;
-}
 
 export const fetchTrendingTVShows = async (
     req: Request,
@@ -37,7 +34,7 @@ export const fetchTrendingTVShows = async (
 };
 
 export const fetchPopularTVShows = async (
-    req: Request<TVParams>,
+    req: Request,
     res: Response
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
@@ -90,7 +87,7 @@ export const fetchPopularTVShows = async (
 };
 
 export const fetchNowPlayingTVShows = async (
-    req: Request<TVParams>,
+    req: Request,
     res: Response
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
@@ -112,12 +109,10 @@ export const fetchNowPlayingTVShows = async (
         controller.abort();
     });
     try {
-        const { pid } = req.params;
         const shows = await getNowPlayingTVShows(
             excludePages,
             controller.signal,
-            genre,
-            region
+            genre
         );
 
         if (!res.headersSent) {
@@ -143,7 +138,7 @@ export const fetchNowPlayingTVShows = async (
 };
 
 export const fetchOnTheAirTVShows = async (
-    req: Request<TVParams>,
+    req: Request,
     res: Response
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
@@ -164,12 +159,10 @@ export const fetchOnTheAirTVShows = async (
         controller.abort();
     });
     try {
-        const { pid } = req.params;
         const shows = await getOnTheAirTVShows(
             excludePages,
             controller.signal,
-            genre,
-            region
+            genre
         );
 
         if (!res.headersSent) {
@@ -196,7 +189,7 @@ export const fetchOnTheAirTVShows = async (
 };
 
 export const fetchTopRatedTVShows = async (
-    req: Request<TVParams>,
+    req: Request,
     res: Response
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);

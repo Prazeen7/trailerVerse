@@ -3,6 +3,7 @@ import tmdb from "../config/tmdb";
 interface RandomPageOptions {
     excludePages?: number[];
     signal?: AbortSignal;
+    genre?: string;
 }
 
 export const buildDiscoverEndpoint = (
@@ -115,14 +116,13 @@ export const getRandomPageData = async (
     const {
         excludePages = [],
         signal,
+        genre,
     } = options ?? {};
 
     let cached = endpointCache.get(endpoint);
 
-    let firstResponse;
-
     if (!cached || cached.expires < Date.now()) {
-        firstResponse = await tmdb.get(endpoint, { signal });
+        const firstResponse = await tmdb.get(endpoint, { signal });
 
         cached = {
             totalPages: Math.min(firstResponse.data.total_pages, 500),
@@ -137,7 +137,6 @@ export const getRandomPageData = async (
             ? []
             : excludePages;
 
-
     let selectedPage: number;
 
     do {
@@ -147,23 +146,113 @@ export const getRandomPageData = async (
 
     const separator = endpoint.includes("?") ? "&" : "?";
 
-    let response;
+    const response = await tmdb.get(
+        `${endpoint}${separator}page=${selectedPage}`,
+        { signal }
+    );
 
-    if (selectedPage === 1 && firstResponse) {
-        response = firstResponse;
-    } else {
-        response = await tmdb.get(
-            `${endpoint}${separator}page=${selectedPage}`,
-            { signal }
+    let results = response.data.results;
+
+    if (genre) {
+        const genreId = Number(genre);
+
+        results = results.filter((item: any) =>
+            item.genre_ids.includes(genreId)
         );
     }
 
     return {
         ...response.data,
         page: selectedPage,
-        results: shuffleArray(response.data.results),
+        results: shuffleArray(results),
     };
 };
+
+export const getRandomFilteredTVData = async (
+    endpoint: string,
+    genre: string,
+    options?: RandomPageOptions
+) => {
+    const {
+        excludePages = [],
+        signal,
+    } = options ?? {};
+
+    let cached = endpointCache.get(endpoint);
+
+    if (!cached || cached.expires < Date.now()) {
+        const firstResponse = await tmdb.get(endpoint, { signal });
+
+        cached = {
+            totalPages: Math.min(firstResponse.data.total_pages, 500),
+            expires: Date.now() + CACHE_DURATION,
+        };
+
+        endpointCache.set(endpoint, cached);
+    }
+
+    const usedPages =
+        excludePages.length >= cached.totalPages
+            ? []
+            : excludePages;
+
+    const triedPages = new Set<number>(usedPages);
+    const collected = new Map<number, any>();
+
+    const TARGET_RESULTS = 20;
+    const MAX_ATTEMPTS = 8;
+
+    let lastSelectedPage = 1;
+    let lastResponse: any;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        if (triedPages.size >= cached.totalPages) break;
+
+        const availablePages = [];
+
+        for (let page = 1; page <= cached.totalPages; page++) {
+            if (!triedPages.has(page)) {
+                availablePages.push(page);
+            }
+        }
+
+        if (availablePages.length === 0) break;
+
+        const selectedPage =
+            availablePages[Math.floor(Math.random() * availablePages.length)];
+
+        triedPages.add(selectedPage);
+        lastSelectedPage = selectedPage;
+
+        const separator = endpoint.includes("?") ? "&" : "?";
+
+        const response = await tmdb.get(
+            `${endpoint}${separator}page=${selectedPage}`,
+            { signal }
+        );
+
+        lastResponse = response;
+
+        const filtered = response.data.results.filter((show: any) =>
+            show.genre_ids?.includes(Number(genre))
+        );
+
+        for (const show of filtered) {
+            collected.set(show.id, show);
+        }
+
+        if (collected.size >= TARGET_RESULTS) {
+            break;
+        }
+    }
+
+    return {
+        ...lastResponse.data,
+        results: shuffleArray([...collected.values()]).slice(0, TARGET_RESULTS),
+        page: lastSelectedPage,
+    };
+};
+
 
 export const getTrendingMovies = async (signal?: AbortSignal) => {
     const response = await tmdb.get("/trending/movie/day", { signal });

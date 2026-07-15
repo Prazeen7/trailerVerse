@@ -1,5 +1,11 @@
 import tmdb from "../config/tmdb";
-import { getRandomPageData, shuffleArray, endpointCache, buildDiscoverEndpoint } from './movieService'
+import {
+    getRandomPageData,
+    getRandomFilteredTVData,
+    shuffleArray,
+    endpointCache,
+    buildDiscoverEndpoint
+} from "./movieService";
 
 export const getTrendingTVShows = async (signal?: AbortSignal) => {
     const response = await tmdb.get("/trending/tv/day", { signal });
@@ -31,8 +37,21 @@ export const getNowPlayingTVShows = async (
     genre?: string,
     region?: string
 ) => {
-    return getRandomPageData(
-        buildDiscoverEndpoint(`/tv/airing_today`, genre, region), {
+
+    const endpoint = "/tv/airing_today";
+
+    if (genre) {
+        return getRandomFilteredTVData(
+            endpoint,
+            genre,
+            {
+                excludePages,
+                signal,
+            }
+        );
+    }
+
+    return getRandomPageData(endpoint, {
         excludePages,
         signal,
     });
@@ -44,7 +63,21 @@ export const getOnTheAirTVShows = async (
     genre?: string,
     region?: string
 ) => {
-    return getRandomPageData(buildDiscoverEndpoint(`/tv/on_the_air`, genre, region), {
+
+    const endpoint = "/tv/on_the_air";
+
+    if (genre) {
+        return getRandomFilteredTVData(
+            endpoint,
+            genre,
+            {
+                excludePages,
+                signal,
+            }
+        );
+    }
+
+    return getRandomPageData(endpoint, {
         excludePages,
         signal,
     });
