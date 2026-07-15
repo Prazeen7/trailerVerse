@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { getTrendingMovies, getPopularMovies, getNowPlayingMovies, getUpcomingMovies, getTopRatedMovies } from '../services/movieService';
+import { getRegionFromIp } from '../services/locationService';
+
 
 export const fetchTrendingMovies = async (
     req: Request,
@@ -38,6 +40,7 @@ export const fetchPopularMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
+    const region = await getRegionFromIp(req.ip);
 
     const genre =
         typeof req.query.genre === "string"
@@ -60,7 +63,8 @@ export const fetchPopularMovies = async (
         const movies = await getPopularMovies(
             excludePages,
             controller.signal,
-            genre
+            genre,
+            region
         );
 
         if (!res.headersSent) {
@@ -87,6 +91,7 @@ export const fetchNowPlayingMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
+    const region = await getRegionFromIp(req.ip);
 
     const genre =
         typeof req.query.genre === "string"
@@ -109,11 +114,15 @@ export const fetchNowPlayingMovies = async (
         const movies = await getNowPlayingMovies(
             excludePages,
             controller.signal,
-            genre
+            genre,
+            region
         );
 
         if (!res.headersSent) {
-            res.status(200).json(movies);
+            res.status(200).json({
+                ...movies,
+                region,
+            });
         }
     } catch (error: any) {
 
@@ -136,6 +145,7 @@ export const fetchUpcomingMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
+    const region = await getRegionFromIp(req.ip);
     const genre =
         typeof req.query.genre === "string"
             ? req.query.genre
@@ -157,10 +167,14 @@ export const fetchUpcomingMovies = async (
         const movies = await getUpcomingMovies(
             excludePages,
             controller.signal,
-            genre
+            genre,
+            region
         );
         if (!res.headersSent) {
-            res.status(200).json(movies);
+            res.status(200).json({
+                ...movies,
+                region,
+            });
         }
     } catch (error: any) {
 
@@ -183,6 +197,7 @@ export const fetchTopRatedMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
+    const region = await getRegionFromIp(req.ip);
     const genre =
         typeof req.query.genre === "string"
             ? req.query.genre
@@ -203,11 +218,15 @@ export const fetchTopRatedMovies = async (
     try {
         const movies = await getTopRatedMovies(excludePages,
             controller.signal,
-            genre
+            genre,
+            region
         );
 
         if (!res.headersSent) {
-            res.status(200).json(movies);
+            res.status(200).json({
+                ...movies,
+                region,
+            });
         }
     } catch (error: any) {
 

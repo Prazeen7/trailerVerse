@@ -7,7 +7,8 @@ interface RandomPageOptions {
 
 const buildDiscoverEndpoint = (
     filter: "popular" | "top_rated" | "upcoming" | "now_playing",
-    genre?: string
+    genre?: string,
+    region?: string
 ) => {
     const params = new URLSearchParams();
 
@@ -17,6 +18,10 @@ const buildDiscoverEndpoint = (
     const monthAgo = new Date(today);
     monthAgo.setDate(today.getDate() - 30);
     const monthAgoStr = monthAgo.toISOString().split("T")[0];
+
+    if (region) {
+        params.set("region", region);
+    }
 
     switch (filter) {
         case "popular":
@@ -138,10 +143,11 @@ export const getTrendingMovies = async (signal?: AbortSignal) => {
 export const getPopularMovies = (
     excludePages: number[] = [],
     signal?: AbortSignal,
-    genre?: string
+    genre?: string,
+    region?: string
 ) => {
     return getRandomPageData(
-        buildDiscoverEndpoint("popular", genre),
+        buildDiscoverEndpoint("popular", genre, region),
         {
             excludePages,
             signal,
@@ -152,10 +158,11 @@ export const getPopularMovies = (
 export const getTopRatedMovies = (
     excludePages: number[] = [],
     signal?: AbortSignal,
-    genre?: string
+    genre?: string,
+    region?: string
 ) => {
     return getRandomPageData(
-        buildDiscoverEndpoint("top_rated", genre),
+        buildDiscoverEndpoint("top_rated", genre, region),
         {
             excludePages,
             signal,
@@ -166,10 +173,11 @@ export const getTopRatedMovies = (
 export const getUpcomingMovies = (
     excludePages: number[] = [],
     signal?: AbortSignal,
-    genre?: string
+    genre?: string,
+    region?: string
 ) => {
     return getRandomPageData(
-        buildDiscoverEndpoint("upcoming", genre),
+        buildDiscoverEndpoint("upcoming", genre, region),
         {
             excludePages,
             signal,
@@ -180,10 +188,11 @@ export const getUpcomingMovies = (
 export const getNowPlayingMovies = (
     excludePages: number[] = [],
     signal?: AbortSignal,
-    genre?: string
+    genre?: string,
+    region?: string
 ) => {
     return getRandomPageData(
-        buildDiscoverEndpoint("now_playing", genre),
+        buildDiscoverEndpoint("now_playing", genre, region),
         {
             excludePages,
             signal,

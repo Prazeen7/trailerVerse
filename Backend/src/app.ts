@@ -10,8 +10,8 @@ dotenv.config();
 
 // Middleware
 const allowedOrigins = (process.env.FRONTEND_URL || "")
-    .split(",")
-    .map(origin => origin.trim());
+  .split(",")
+  .map(origin => origin.trim());
 
 app.use(
     cors({
@@ -27,17 +27,6 @@ app.get('/', (_req, res) => {
     res.json({
         success: true,
         message: "TrailerVerse API is running",
-    });
-});
-
-app.set("trust proxy", true);
-
-app.get("/api/debug/ip", (req, res) => {
-    res.json({
-        ip: req.ip,
-        ips: req.ips,
-        xForwardedFor: req.headers["x-forwarded-for"],
-        remoteAddress: req.socket.remoteAddress,
     });
 });
 

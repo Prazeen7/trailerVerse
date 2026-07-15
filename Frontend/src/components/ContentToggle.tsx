@@ -16,6 +16,7 @@ interface ContentToggleProps {
     onActivity: () => void;
     genre?: number;
     onGenreChange: (genre?: number) => void;
+    region?: string;
 }
 
 /** Determine layout mode from live viewport size. */
@@ -43,6 +44,7 @@ export default function ContentToggle({
     onActivity,
     genre,
     onGenreChange,
+    region
 }: ContentToggleProps) {
     const [layoutMode, setLayoutMode] = useState<"desktop" | "mobile-portrait" | "mobile-landscape">(getLayoutMode);
     const filterContainerRef = useRef<HTMLDivElement>(null);
@@ -366,6 +368,7 @@ export default function ContentToggle({
                     </svg>
                 </button>
 
+
                 {selectedGenreName && (
                     <div
                         onClick={() => onGenreChange(undefined)}
@@ -388,6 +391,25 @@ export default function ContentToggle({
                         }}
                     >
                         {selectedGenreName} ✕
+                    </div>
+                )}
+
+                {region && (
+                    <div
+                        style={{
+                            padding: isLandscape ? "4px 10px" : "6px 12px",
+                            borderRadius: 999,
+                            background: "rgba(255,255,255,0.18)",
+                            backdropFilter: "blur(20px)",
+                            WebkitBackdropFilter: "blur(20px)",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            color: "#fff",
+                            fontSize: isLandscape ? 10 : 12,
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                        }}
+                    >
+                        🌍 {region}
                     </div>
                 )}
 

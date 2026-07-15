@@ -37,6 +37,7 @@ export default function Home() {
     const requestIdRef = useRef(0);
     const fetchControllerRef = useRef<AbortController | null>(null);
     const [genre, setGenre] = useState<number | undefined>(undefined);
+    const [region, setRegion] = useState<string>();
 
     const currentIndex =
         contentType === "movie"
@@ -144,6 +145,7 @@ export default function Home() {
                         },
                     }
                 );
+                setRegion(response.data.region);
                 items = response.data.results;
                 saveUsedPage(
                     type,
@@ -165,7 +167,7 @@ export default function Home() {
                         },
                     }
                 );
-
+                setRegion(response.data.region);
                 items = response.data.results;
 
                 saveUsedPage(
@@ -629,6 +631,7 @@ export default function Home() {
                 onActivity={showUIControls}
                 genre={genre}
                 onGenreChange={setGenre}
+                region={region}
             />
 
             <div
