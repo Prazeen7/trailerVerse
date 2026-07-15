@@ -186,11 +186,6 @@ export default function ContentToggle({
     const filterPad = isLandscape ? "4px 9px" : isPortrait ? "6px 8px" : "10px 16px";
     const filterBtnH = isPortrait ? "auto" : isLandscape ? "auto" : 46;
 
-    // Visibility transforms per element & mode 
-    // Content toggle: slides up when hidden
-    const ctShow = isLandscape ? "translateY(0)" : `translateX(-50%) translateY(0)`;
-    const ctHideF = isLandscape ? `translateY(-130%)` : `translateX(-50%) translateY(-130%)`;
-
     // Filter: landscape slides up (top-right), portrait slides down, desktop slides left
     const fHide = isLandscape
         ? "translateX(0) translateY(-130%)"
