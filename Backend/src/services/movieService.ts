@@ -5,6 +5,48 @@ interface RandomPageOptions {
     signal?: AbortSignal;
 }
 
+const buildDiscoverEndpoint = (
+    filter: "popular" | "top_rated" | "upcoming" | "now_playing",
+    genre?: string
+) => {
+    const params = new URLSearchParams();
+
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
+    const monthAgo = new Date(today);
+    monthAgo.setDate(today.getDate() - 30);
+    const monthAgoStr = monthAgo.toISOString().split("T")[0];
+
+    switch (filter) {
+        case "popular":
+            params.set("sort_by", "popularity.desc");
+            break;
+
+        case "top_rated":
+            params.set("sort_by", "vote_average.desc");
+            params.set("vote_count.gte", "1000");
+            break;
+
+        case "upcoming":
+            params.set("primary_release_date.gte", todayStr);
+            params.set("sort_by", "popularity.desc");
+            break;
+
+        case "now_playing":
+            params.set("primary_release_date.lte", todayStr);
+            params.set("primary_release_date.gte", monthAgoStr);
+            params.set("sort_by", "popularity.desc");
+            break;
+    }
+
+    if (genre) {
+        params.set("with_genres", genre);
+    }
+
+    return `/discover/movie?${params.toString()}`;
+};
+
 export const shuffleArray = <T,>(array: T[]): T[] => {
     const shuffled = [...array];
 
@@ -93,42 +135,58 @@ export const getTrendingMovies = async (signal?: AbortSignal) => {
     };
 };
 
-export const getPopularMovies = async (
+export const getPopularMovies = (
     excludePages: number[] = [],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    genre?: string
 ) => {
-    return getRandomPageData("/movie/popular", {
-        excludePages,
-        signal,
-    });
+    return getRandomPageData(
+        buildDiscoverEndpoint("popular", genre),
+        {
+            excludePages,
+            signal,
+        }
+    );
 };
 
-export const getNowPlayingMovies = async (
+export const getTopRatedMovies = (
     excludePages: number[] = [],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    genre?: string
 ) => {
-    return getRandomPageData("/movie/now_playing", {
-        excludePages,
-        signal,
-    });
+    return getRandomPageData(
+        buildDiscoverEndpoint("top_rated", genre),
+        {
+            excludePages,
+            signal,
+        }
+    );
 };
 
-export const getUpcomingMovies = async (
+export const getUpcomingMovies = (
     excludePages: number[] = [],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    genre?: string
 ) => {
-    return getRandomPageData("/movie/upcoming", {
-        excludePages,
-        signal,
-    });
+    return getRandomPageData(
+        buildDiscoverEndpoint("upcoming", genre),
+        {
+            excludePages,
+            signal,
+        }
+    );
 };
 
-export const getTopRatedMovies = async (
+export const getNowPlayingMovies = (
     excludePages: number[] = [],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    genre?: string
 ) => {
-    return getRandomPageData("/movie/top_rated", {
-        excludePages,
-        signal,
-    });
+    return getRandomPageData(
+        buildDiscoverEndpoint("now_playing", genre),
+        {
+            excludePages,
+            signal,
+        }
+    );
 };

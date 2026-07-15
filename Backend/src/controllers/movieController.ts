@@ -39,6 +39,11 @@ export const fetchPopularMovies = async (
     res: Response
 ): Promise<void> => {
 
+    const genre =
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined;
+
     const excludePages: number[] =
         typeof req.query.excludePages === "string"
             ? req.query.excludePages
@@ -52,8 +57,11 @@ export const fetchPopularMovies = async (
         controller.abort();
     });
     try {
-        const movies = await getPopularMovies(excludePages,
-            controller.signal);
+        const movies = await getPopularMovies(
+            excludePages,
+            controller.signal,
+            genre
+        );
 
         if (!res.headersSent) {
             res.status(200).json(movies);
@@ -80,6 +88,11 @@ export const fetchNowPlayingMovies = async (
     res: Response
 ): Promise<void> => {
 
+    const genre =
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined;
+
     const excludePages: number[] =
         typeof req.query.excludePages === "string"
             ? req.query.excludePages
@@ -93,8 +106,11 @@ export const fetchNowPlayingMovies = async (
         controller.abort();
     });
     try {
-        const movies = await getNowPlayingMovies(excludePages,
-    controller.signal);
+        const movies = await getNowPlayingMovies(
+            excludePages,
+            controller.signal,
+            genre
+        );
 
         if (!res.headersSent) {
             res.status(200).json(movies);
@@ -120,6 +136,11 @@ export const fetchUpcomingMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
+    const genre =
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined;
+
     const excludePages: number[] =
         typeof req.query.excludePages === "string"
             ? req.query.excludePages
@@ -133,8 +154,11 @@ export const fetchUpcomingMovies = async (
         controller.abort();
     });
     try {
-        const movies = await getUpcomingMovies(excludePages,
-    controller.signal);
+        const movies = await getUpcomingMovies(
+            excludePages,
+            controller.signal,
+            genre
+        );
         if (!res.headersSent) {
             res.status(200).json(movies);
         }
@@ -159,6 +183,11 @@ export const fetchTopRatedMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
+    const genre =
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined;
+
     const excludePages: number[] =
         typeof req.query.excludePages === "string"
             ? req.query.excludePages
@@ -173,7 +202,9 @@ export const fetchTopRatedMovies = async (
     });
     try {
         const movies = await getTopRatedMovies(excludePages,
-    controller.signal);
+            controller.signal,
+            genre
+        );
 
         if (!res.headersSent) {
             res.status(200).json(movies);

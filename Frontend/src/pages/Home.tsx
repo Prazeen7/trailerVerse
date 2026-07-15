@@ -36,6 +36,7 @@ export default function Home() {
     const switchingRef = useRef(false);
     const requestIdRef = useRef(0);
     const fetchControllerRef = useRef<AbortController | null>(null);
+    const [genre, setGenre] = useState<number | undefined>(undefined);
 
     const currentIndex =
         contentType === "movie"
@@ -55,16 +56,18 @@ export default function Home() {
 
     const getStorageKey = (
         type: "movie" | "tv",
-        filter: "now_playing" | "popular" | "top_rated" | "upcoming"
-    ) => `used-pages-${type}-${filter}`;
+        filter: "now_playing" | "popular" | "top_rated" | "upcoming",
+        genre?: number
+    ) => `used-pages-${type}-${filter}-${genre ?? "all"}`;
 
     const getUsedPages = (
         type: "movie" | "tv",
-        filter: "now_playing" | "popular" | "top_rated" | "upcoming"
+        filter: "now_playing" | "popular" | "top_rated" | "upcoming",
+        genre?: number
     ): number[] => {
         try {
             const stored = localStorage.getItem(
-                getStorageKey(type, filter)
+                getStorageKey(type, filter, genre)
             );
 
             return stored ? JSON.parse(stored) : [];
@@ -76,15 +79,16 @@ export default function Home() {
     const saveUsedPage = (
         type: "movie" | "tv",
         filter: "now_playing" | "popular" | "top_rated" | "upcoming",
-        page: number
+        page: number,
+        genre?: number
     ) => {
-        const pages = getUsedPages(type, filter);
+        const pages = getUsedPages(type, filter, genre);
 
         if (!pages.includes(page)) {
             pages.push(page);
 
             localStorage.setItem(
-                getStorageKey(type, filter),
+                getStorageKey(type, filter, genre),
                 JSON.stringify(pages)
             );
         }
@@ -114,7 +118,7 @@ export default function Home() {
         const signal = controller.signal;
 
         try {
-            const usedPages = getUsedPages(type, filter);
+            const usedPages = getUsedPages(type, filter, genre);
             let items: any[] = [];
             if (type === "movie") {
                 setMovieLoading(true);
@@ -136,6 +140,7 @@ export default function Home() {
                         signal,
                         params: {
                             excludePages: usedPages.join(","),
+                            genre,
                         },
                     }
                 );
@@ -143,7 +148,8 @@ export default function Home() {
                 saveUsedPage(
                     type,
                     filter,
-                    response.data.page
+                    response.data.page,
+                    genre
                 );
                 if (requestId !== requestIdRef.current) return;
             } else {
@@ -155,6 +161,7 @@ export default function Home() {
                         signal,
                         params: {
                             excludePages: usedPages.join(","),
+                            genre,
                         },
                     }
                 );
@@ -164,7 +171,8 @@ export default function Home() {
                 saveUsedPage(
                     type,
                     filter,
-                    response.data.page
+                    response.data.page,
+                    genre
                 );
 
                 if (requestId !== requestIdRef.current) return;
@@ -337,7 +345,7 @@ export default function Home() {
         }
 
         fetchContent(contentType, filterType);
-    }, [filterType, contentType]);
+    }, [filterType, contentType, genre]);
 
     const handleFilterChange = (filter: "now_playing" | "popular" | "top_rated" | "upcoming") => {
         setFilterType(filter);
@@ -619,6 +627,8 @@ export default function Home() {
                 onToggleFullscreen={toggleFullscreen}
                 isVisible={isVisible}
                 onActivity={showUIControls}
+                genre={genre}
+                onGenreChange={setGenre}
             />
 
             <div

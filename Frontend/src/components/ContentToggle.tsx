@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import GenreModal from "./GenreModal";
 
 interface ContentToggleProps {
     contentType: "movie" | "tv";
@@ -13,6 +14,8 @@ interface ContentToggleProps {
     onToggleFullscreen: () => void;
     isVisible: boolean;
     onActivity: () => void;
+    genre?: number;
+    onGenreChange: (genre?: number) => void;
 }
 
 /** Determine layout mode from live viewport size. */
@@ -38,11 +41,14 @@ export default function ContentToggle({
     onToggleFullscreen,
     isVisible,
     onActivity,
+    genre,
+    onGenreChange,
 }: ContentToggleProps) {
     const [layoutMode, setLayoutMode] = useState<"desktop" | "mobile-portrait" | "mobile-landscape">(getLayoutMode);
     const filterContainerRef = useRef<HTMLDivElement>(null);
     const [buttonWidths, setButtonWidths] = useState<number[]>([]);
     const resizeTimeoutRef = useRef<number | null>(null);
+    const [showGenreModal, setShowGenreModal] = useState(false);
 
     const isMobile = layoutMode !== "desktop";
     const isLandscape = layoutMode === "mobile-landscape";
@@ -246,6 +252,8 @@ export default function ContentToggle({
                 </div>
             </div>
 
+
+
             {/* ══════════════════════════════════════════════════════════════════
                 VIDEO CONTROLS  (mute · play/pause · fullscreen)
                 • Landscape  : bottom-RIGHT, horizontal row — well clear of arrows
@@ -283,6 +291,34 @@ export default function ContentToggle({
                     style={{ ...glassBtn(ctrlBtnSize), fontSize: isLandscape ? 13 : 18 }}
                 >
                     {isMuted ? "🔇" : "🔊"}
+                </button>
+
+                {/* Genre */}
+                <button
+                    className="glass-control-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowGenreModal(true);
+                    }}
+                    title="Genres"
+                    style={glassBtn(ctrlBtnSize)}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width={iconSize + 6}
+                        height={iconSize + 6}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="m12.296 3.464 3.02 3.956" />
+                        <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z" />
+                        <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <path d="m6.18 5.276 3.1 3.899" />
+                    </svg>
                 </button>
 
                 {/* Fullscreen */}
@@ -415,6 +451,13 @@ export default function ContentToggle({
                     })}
                 </div>
             </div>
+            <GenreModal
+                open={showGenreModal}
+                onClose={() => setShowGenreModal(false)}
+                selectedGenre={genre}
+                onSelect={onGenreChange}
+                contentType={contentType}
+            />
         </>
     );
 }
