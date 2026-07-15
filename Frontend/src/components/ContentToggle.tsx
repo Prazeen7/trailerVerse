@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import GenreModal from "./GenreModal";
+import { getCountryFlag } from "./CountryFlag";
 
 interface ContentToggleProps {
     contentType: "movie" | "tv";
@@ -95,6 +96,9 @@ export default function ContentToggle({
         10768: "War",
         37: "Western",
     };
+
+    console.log("Region:", region);
+    console.log("Flag:", getCountryFlag(region));
 
     // Keep controls visible whenever playback is paused
     const controlsVisible = isVisible || isPaused;
@@ -409,7 +413,7 @@ export default function ContentToggle({
                             whiteSpace: "nowrap",
                         }}
                     >
-                        🌍 {region}
+                        {getCountryFlag(region)}  {region}
                     </div>
                 )}
 
