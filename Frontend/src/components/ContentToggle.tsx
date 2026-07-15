@@ -424,6 +424,7 @@ export default function ContentToggle({
                                 style={{
                                     borderRadius: "2px",
                                     objectFit: "contain",
+                                    display: "block",
                                 }}
                             />  {region}
                         </div>
