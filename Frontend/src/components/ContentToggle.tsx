@@ -394,33 +394,41 @@ export default function ContentToggle({
                     </div>
                 )}
 
-                {region && (
-                    <div
-                        style={{
-                            padding: isLandscape ? "4px 10px" : "6px 12px",
-                            borderRadius: 999,
-                            background: "rgba(255,255,255,0.18)",
-                            backdropFilter: "blur(20px)",
-                            WebkitBackdropFilter: "blur(20px)",
-                            border: "1px solid rgba(255,255,255,0.2)",
-                            color: "#fff",
-                            fontSize: isLandscape ? 10 : 12,
-                            fontWeight: 600,
-                            whiteSpace: "nowrap",
-                        }}
-                    >
-                        <img
-                            src={`https://flagcdn.com/${region.toLowerCase()}.svg`}
-                            alt={region}
-                            width={20}
-                            height={15}
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                    }}
+                >
+                    {region && (
+                        <div
                             style={{
-                                borderRadius: "2px",
-                                objectFit: "cover",
+                                padding: isLandscape ? "4px 10px" : "6px 12px",
+                                borderRadius: 999,
+                                background: "rgba(255,255,255,0.18)",
+                                backdropFilter: "blur(20px)",
+                                WebkitBackdropFilter: "blur(20px)",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                color: "#fff",
+                                fontSize: isLandscape ? 10 : 12,
+                                fontWeight: 600,
+                                whiteSpace: "nowrap",
                             }}
-                        />  {region}
-                    </div>
-                )}
+                        >
+                            <img
+                                src={`https://flagcdn.com/${region.toLowerCase()}.svg`}
+                                alt={region}
+                                width={20}
+                                height={15}
+                                style={{
+                                    borderRadius: "2px",
+                                    objectFit: "contain",
+                                }}
+                            />  {region}
+                        </div>
+                    )}
+                </div>
 
                 {/* Fullscreen */}
                 <button
