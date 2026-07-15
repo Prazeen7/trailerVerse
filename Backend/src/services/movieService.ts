@@ -5,23 +5,61 @@ interface RandomPageOptions {
     signal?: AbortSignal;
 }
 
-const buildDiscoverEndpoint = (
-    filter: "popular" | "top_rated" | "upcoming" | "now_playing",
+export const buildDiscoverEndpoint = (
+    filter:
+        | "popular"
+        | "top_rated"
+        | "upcoming"
+        | "now_playing"
+        | "/tv/popular"
+        | "/tv/airing_today"
+        | "/tv/on_the_air"
+        | "/tv/top_rated",
     genre?: string,
     region?: string
 ) => {
     const params = new URLSearchParams();
 
+    const isTV = filter.startsWith("/tv/");
+
+    if (!isTV && region) {
+        params.set("region", region);
+    }
+
+    if (genre) {
+        params.set("with_genres", genre);
+    }
+
+    if (isTV) {
+        switch (filter) {
+            case "/tv/popular":
+                params.set("sort_by", "popularity.desc");
+                break;
+
+            case "/tv/top_rated":
+                params.set("sort_by", "vote_average.desc");
+                params.set("vote_count.gte", "100");
+                break;
+
+            case "/tv/on_the_air":
+                params.set("sort_by", "popularity.desc");
+                break;
+
+            case "/tv/airing_today":
+                params.set("sort_by", "popularity.desc");
+                break;
+        }
+
+        return `/discover/tv?${params.toString()}`;
+    }
+
+    // movie logic
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
     const monthAgo = new Date(today);
     monthAgo.setDate(today.getDate() - 30);
     const monthAgoStr = monthAgo.toISOString().split("T")[0];
-
-    if (region) {
-        params.set("region", region);
-    }
 
     switch (filter) {
         case "popular":
@@ -43,10 +81,6 @@ const buildDiscoverEndpoint = (
             params.set("primary_release_date.gte", monthAgoStr);
             params.set("sort_by", "popularity.desc");
             break;
-    }
-
-    if (genre) {
-        params.set("with_genres", genre);
     }
 
     return `/discover/movie?${params.toString()}`;

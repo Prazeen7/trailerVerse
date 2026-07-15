@@ -1,5 +1,5 @@
 import tmdb from "../config/tmdb";
-import { getRandomPageData, shuffleArray, endpointCache, } from './movieService'
+import { getRandomPageData, shuffleArray, endpointCache, buildDiscoverEndpoint } from './movieService'
 
 export const getTrendingTVShows = async (signal?: AbortSignal) => {
     const response = await tmdb.get("/trending/tv/day", { signal });
@@ -10,33 +10,53 @@ export const getTrendingTVShows = async (signal?: AbortSignal) => {
     };
 }
 
-export const getPopularTVShows = async (excludePages: number[] = [],
-    signal?: AbortSignal) => {
-    return getRandomPageData(`/tv/popular`, {
-        excludePages,
-        signal,
-    });
+export const getPopularTVShows = async (
+    excludePages: number[] = [],
+    signal?: AbortSignal,
+    genre?: string,
+    region?: string
+) => {
+    return getRandomPageData(
+        buildDiscoverEndpoint(`/tv/popular`, genre, region),
+        {
+            excludePages,
+            signal,
+        }
+    );
 }
 
-export const getNowPlayingTVShows = async (excludePages: number[] = [],
-    signal?: AbortSignal) => {
-    return getRandomPageData(`/tv/airing_today`, {
+export const getNowPlayingTVShows = async (
+    excludePages: number[] = [],
+    signal?: AbortSignal,
+    genre?: string,
+    region?: string
+) => {
+    return getRandomPageData(
+        buildDiscoverEndpoint(`/tv/airing_today`, genre, region), {
         excludePages,
         signal,
     });
 };
 
-export const getOnTheAirTVShows = async (excludePages: number[] = [],
-    signal?: AbortSignal) => {
-    return getRandomPageData(`/tv/on_the_air`, {
+export const getOnTheAirTVShows = async (
+    excludePages: number[] = [],
+    signal?: AbortSignal,
+    genre?: string,
+    region?: string
+) => {
+    return getRandomPageData(buildDiscoverEndpoint(`/tv/on_the_air`, genre, region), {
         excludePages,
         signal,
     });
 };
 
-export const getTopRatedTVShows = async (excludePages: number[] = [],
-    signal?: AbortSignal) => {
-    return getRandomPageData(`/tv/top_rated?`, {
+export const getTopRatedTVShows = async (
+    excludePages: number[] = [],
+    signal?: AbortSignal,
+    genre?: string,
+    region?: string
+) => {
+    return getRandomPageData(buildDiscoverEndpoint(`/tv/top_rated`, genre, region), {
         excludePages,
         signal,
     });

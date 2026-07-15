@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { getTrendingTVShows, getPopularTVShows, getNowPlayingTVShows, getTopRatedTVShows, getOnTheAirTVShows } from '../services/tvService';
-import { getTopRatedMovies } from '../services/movieService';
-
+import { getRegionFromIp } from '../services/locationService';
 interface TVParams {
     pid: string;
 }
@@ -41,6 +40,12 @@ export const fetchPopularTVShows = async (
     req: Request<TVParams>,
     res: Response
 ): Promise<void> => {
+    const region = await getRegionFromIp(req.ip);
+
+    const genre =
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined;
     const excludePages: number[] =
         typeof req.query.excludePages === "string"
             ? req.query.excludePages
@@ -55,9 +60,17 @@ export const fetchPopularTVShows = async (
     });
     try {
         const { pid } = req.params;
-        const shows = await getPopularTVShows(excludePages, controller.signal);
+        const shows = await getPopularTVShows(
+            excludePages,
+            controller.signal,
+            genre,
+            region
+        );
         if (!res.headersSent) {
-            res.status(200).json(shows);
+            res.status(200).json({
+                ...shows,
+                region,
+            });
         }
     } catch (error: any) {
 
@@ -80,6 +93,12 @@ export const fetchNowPlayingTVShows = async (
     req: Request<TVParams>,
     res: Response
 ): Promise<void> => {
+    const region = await getRegionFromIp(req.ip);
+
+    const genre =
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined;
     const excludePages: number[] =
         typeof req.query.excludePages === "string"
             ? req.query.excludePages
@@ -94,10 +113,18 @@ export const fetchNowPlayingTVShows = async (
     });
     try {
         const { pid } = req.params;
-        const shows = await getNowPlayingTVShows(excludePages, controller.signal);
+        const shows = await getNowPlayingTVShows(
+            excludePages,
+            controller.signal,
+            genre,
+            region
+        );
 
         if (!res.headersSent) {
-            res.status(200).json(shows);
+            res.status(200).json({
+                ...shows,
+                region,
+            });
         }
     } catch (error: any) {
         if (error.code === "ERR_CANCELED") {
@@ -119,6 +146,12 @@ export const fetchOnTheAirTVShows = async (
     req: Request<TVParams>,
     res: Response
 ): Promise<void> => {
+    const region = await getRegionFromIp(req.ip);
+
+    const genre =
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined;
     const excludePages: number[] =
         typeof req.query.excludePages === "string"
             ? req.query.excludePages
@@ -132,10 +165,18 @@ export const fetchOnTheAirTVShows = async (
     });
     try {
         const { pid } = req.params;
-        const shows = await getOnTheAirTVShows(excludePages, controller.signal);
+        const shows = await getOnTheAirTVShows(
+            excludePages,
+            controller.signal,
+            genre,
+            region
+        );
 
         if (!res.headersSent) {
-            res.status(200).json(shows);
+            res.status(200).json({
+                ...shows,
+                region,
+            });
         }
     } catch (error: any) {
 
@@ -158,6 +199,13 @@ export const fetchTopRatedTVShows = async (
     req: Request<TVParams>,
     res: Response
 ): Promise<void> => {
+    const region = await getRegionFromIp(req.ip);
+
+    const genre =
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined;
+
     const excludePages: number[] =
         typeof req.query.excludePages === "string"
             ? req.query.excludePages
@@ -171,10 +219,18 @@ export const fetchTopRatedTVShows = async (
     });
     try {
         const { pid } = req.params;
-        const shows = await getTopRatedTVShows(excludePages, controller.signal);
+        const shows = await getTopRatedTVShows(
+            excludePages,
+            controller.signal,
+            genre,
+            region
+        );
 
         if (!res.headersSent) {
-            res.status(200).json(shows);
+            res.status(200).json({
+                ...shows,
+                region,
+            });
         }
     } catch (error: any) {
 

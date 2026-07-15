@@ -96,11 +96,6 @@ export const fetchNowPlayingMovies = async (
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
 
-    console.log("Region:", region);
-    console.log("req.ip:", req.ip);
-    console.log("x-forwarded-for:", req.headers["x-forwarded-for"]);
-    console.log("remoteAddress:", req.socket.remoteAddress);
-
     const genre =
         typeof req.query.genre === "string"
             ? req.query.genre
