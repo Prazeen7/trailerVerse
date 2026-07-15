@@ -53,6 +53,46 @@ export default function ContentToggle({
     const isMobile = layoutMode !== "desktop";
     const isLandscape = layoutMode === "mobile-landscape";
     const isPortrait = layoutMode === "mobile-portrait";
+    const MOVIE_GENRES: Record<number, string> = {
+        28: "Action",
+        12: "Adventure",
+        16: "Animation",
+        35: "Comedy",
+        80: "Crime",
+        99: "Documentary",
+        18: "Drama",
+        10751: "Family",
+        14: "Fantasy",
+        36: "History",
+        27: "Horror",
+        10402: "Music",
+        9648: "Mystery",
+        10749: "Romance",
+        878: "Sci-Fi",
+        10770: "TV Movie",
+        53: "Thriller",
+        10752: "War",
+        37: "Western",
+    };
+
+    const TV_GENRES: Record<number, string> = {
+        10759: "Action",
+        16: "Animation",
+        35: "Comedy",
+        80: "Crime",
+        99: "Documentary",
+        18: "Drama",
+        10751: "Family",
+        10762: "Kids",
+        9648: "Mystery",
+        10763: "News",
+        10764: "Reality",
+        10765: "Sci-Fi",
+        10766: "Soap",
+        10767: "Talk",
+        10768: "War",
+        37: "Western",
+    };
 
     // Keep controls visible whenever playback is paused
     const controlsVisible = isVisible || isPaused;
@@ -75,6 +115,11 @@ export default function ContentToggle({
         ];
     };
     const filters = getFilters();
+
+    const genreMap = contentType === "movie" ? MOVIE_GENRES : TV_GENRES;
+
+    const selectedGenreName =
+        genre !== undefined ? genreMap[genre] : "";
 
     // Vertical sliding indicator position for desktop column layout
     const getDesktopFilterTop = (filter: string) => {
@@ -320,6 +365,31 @@ export default function ContentToggle({
                         <path d="m6.18 5.276 3.1 3.899" />
                     </svg>
                 </button>
+
+                {selectedGenreName && (
+                    <div
+                        onClick={() => onGenreChange(undefined)}
+                        title="Clear genre"
+                        style={{
+                            padding: isLandscape ? "4px 10px" : "6px 12px",
+                            borderRadius: 999,
+                            background: "rgba(255,255,255,0.18)",
+                            backdropFilter: "blur(20px)",
+                            WebkitBackdropFilter: "blur(20px)",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            color: "#fff",
+                            fontSize: isLandscape ? 10 : 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                            maxWidth: 120,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                        }}
+                    >
+                        {selectedGenreName} ✕
+                    </div>
+                )}
 
                 {/* Fullscreen */}
                 <button
