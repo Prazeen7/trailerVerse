@@ -246,60 +246,60 @@ export default function ContentToggle({
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    zIndex: 100,
                     opacity: isVisible ? 1 : 0,
                     pointerEvents: isVisible ? "auto" : "none",
                     transition:
                         "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
+                    zIndex: 1002,
                 }}
                 onMouseEnter={onActivity}
                 onMouseLeave={onActivity}
             >
+                <div style={{
+                    position: "relative",
+                    display: "flex",
+                    width: isLandscape ? 128 : isMobile ? 160 : 220,
+                    padding: isLandscape ? 2 : isMobile ? 3 : 4,
+                    borderRadius: 999,
+                    background: "rgba(255,255,255,0.15)",
+                    backdropFilter: "blur(20px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                    border: "1px solid rgba(255,255,255,0.2)",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
+                }}>
+                    {/* Sliding pill */}
                     <div style={{
-                        position: "relative",
-                        display: "flex",
-                        width: isLandscape ? 128 : isMobile ? 160 : 220,
-                        padding: isLandscape ? 2 : isMobile ? 3 : 4,
+                        position: "absolute",
+                        top: isLandscape ? 2 : isMobile ? 3 : 4,
+                        left: contentType === "movie"
+                            ? (isLandscape ? 2 : isMobile ? 3 : 4)
+                            : "50%",
+                        width: "calc(50% - 6px)",
+                        height: `calc(100% - ${isLandscape ? 4 : isMobile ? 6 : 8}px)`,
                         borderRadius: 999,
-                        background: "rgba(255,255,255,0.15)",
-                        backdropFilter: "blur(20px) saturate(180%)",
-                        WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                        border: "1px solid rgba(255,255,255,0.2)",
-                        boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
-                    }}>
-                        {/* Sliding pill */}
-                        <div style={{
-                            position: "absolute",
-                            top: isLandscape ? 2 : isMobile ? 3 : 4,
-                            left: contentType === "movie"
-                                ? (isLandscape ? 2 : isMobile ? 3 : 4)
-                                : "50%",
-                            width: "calc(50% - 6px)",
-                            height: `calc(100% - ${isLandscape ? 4 : isMobile ? 6 : 8}px)`,
-                            borderRadius: 999,
-                            background: "rgba(255,255,255,0.9)",
-                            backdropFilter: "blur(10px)",
-                            transition: "left 0.3s cubic-bezier(0.22,1,0.36,1)",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                        }} />
-                        {(["movie", "tv"] as const).map((t) => (
-                            <button
-                                key={t}
-                                onClick={() => onChange(t)}
-                                style={{
-                                    flex: 1, zIndex: 1, border: "none", background: "transparent",
-                                    padding: isLandscape ? "5px 0" : isMobile ? "8px 0" : "10px 0",
-                                    cursor: "pointer", fontWeight: 600,
-                                    fontSize: isLandscape ? 10 : isMobile ? 12 : 15,
-                                    color: contentType === t ? "#000" : "rgba(255,255,255,0.8)",
-                                    transition: "color .3s", outline: "none",
-                                    WebkitTapHighlightColor: "transparent",
-                                }}
-                            >
-                                {t === "movie" ? "Movies" : "TV Shows"}
-                            </button>
-                        ))}
-                    </div>
+                        background: "rgba(255,255,255,0.9)",
+                        backdropFilter: "blur(10px)",
+                        transition: "left 0.3s cubic-bezier(0.22,1,0.36,1)",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                    }} />
+                    {(["movie", "tv"] as const).map((t) => (
+                        <button
+                            key={t}
+                            onClick={() => onChange(t)}
+                            style={{
+                                flex: 1, zIndex: 1, border: "none", background: "transparent",
+                                padding: isLandscape ? "5px 0" : isMobile ? "8px 0" : "10px 0",
+                                cursor: "pointer", fontWeight: 600,
+                                fontSize: isLandscape ? 10 : isMobile ? 12 : 15,
+                                color: contentType === t ? "#000" : "rgba(255,255,255,0.8)",
+                                transition: "color .3s", outline: "none",
+                                WebkitTapHighlightColor: "transparent",
+                            }}
+                        >
+                            {t === "movie" ? "Movies" : "TV Shows"}
+                        </button>
+                    ))}
+                </div>
 
                 {/* Region Flag */}
                 {region && (

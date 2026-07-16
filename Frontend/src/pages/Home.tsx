@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import api from "../api/api";
 import TrailerCard from "../components/TrailerCard";
 import ContentToggle from "../components/ContentToggle";
+import Loader from "../components/TrailerLoader";
 
 interface Movie {
     id: number;
@@ -21,7 +22,6 @@ export default function Home() {
     const fetchingMoreRef = useRef(false);
     const [contentType, setContentType] = useState<"movie" | "tv">("movie");
     const [filterType, setFilterType] = useState<"now_playing" | "popular" | "top_rated" | "upcoming">("now_playing");
-    const [initialLoading, setInitialLoading] = useState(true);
     const [movieTrailers, setMovieTrailers] = useState<Movie[]>([]);
     const [tvTrailers, setTvTrailers] = useState<Movie[]>([]);
     const [movieIndex, setMovieIndex] = useState(0);
@@ -38,6 +38,10 @@ export default function Home() {
     const fetchControllerRef = useRef<AbortController | null>(null);
     const [genre, setGenre] = useState<number | undefined>(undefined);
     const [region, setRegion] = useState<string>();
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [fetchLoading, setFetchLoading] = useState(false);   // API requests
+    const trailerTimeoutRef = useRef<number | null>(null);
+    const [iframeLoading, setIframeLoading] = useState(false);
 
     const currentIndex =
         contentType === "movie"
@@ -114,6 +118,7 @@ export default function Home() {
         type: "movie" | "tv",
         filter: "now_playing" | "popular" | "top_rated" | "upcoming" = "now_playing"
     ) => {
+        setFetchLoading(true);
         const requestId = ++requestIdRef.current;
 
         fetchControllerRef.current?.abort();
@@ -244,6 +249,7 @@ export default function Home() {
 
             console.error(err);
         } finally {
+            setFetchLoading(false);
             if (requestId === requestIdRef.current) {
 
                 if (type === "movie") {
@@ -256,6 +262,13 @@ export default function Home() {
                     setInitialLoading(false);
                 }
             }
+        }
+    };
+
+    const handleTrailerReady = (id: number) => {
+
+        if (moviesWithTrailers[currentIndex]?.id === id) {
+            setIframeLoading(false);
         }
     };
 
@@ -346,6 +359,8 @@ export default function Home() {
         setMovieIndex(0);
         setTvIndex(0);
 
+        setIframeLoading(true);
+
         // Clear existing data
         if (contentType === "movie") {
             setMovieTrailers([]);
@@ -417,9 +432,14 @@ export default function Home() {
     const handleNavigation = (index: number) => {
         if (switchingRef.current) return;
 
-        // Reset paused state so new card auto-plays
         if (index !== currentIndex) {
-            setIsPaused(false);
+
+            if (trailerTimeoutRef.current) {
+                clearTimeout(trailerTimeoutRef.current);
+            }
+
+            trailerTimeoutRef.current = window.setTimeout(() => {
+            }, 5000);
         }
 
         if (contentType === "movie") {
@@ -531,20 +551,6 @@ export default function Home() {
         };
     }, [currentIndex, moviesWithTrailers.length, isTransitioning]);
 
-
-    // Loading state
-    if (initialLoading) {
-        return (
-            <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#000", color: "#fff" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
-                    <div style={{ width: "50px", height: "50px", border: "4px solid rgba(255,255,255,0.1)", borderTop: "4px solid #ffffff", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-                    <p style={{ color: "rgba(255,255,255,0.7)" }}>Loading movies...</p>
-                    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-                </div>
-            </div>
-        );
-    }
-
     const handleContentChange = (type: "movie" | "tv") => {
         if (type === contentType) return;
 
@@ -616,7 +622,10 @@ export default function Home() {
         );
     }
 
-
+    const isLazyLoadingAtEnd =
+        fetchLoading &&
+        moviesWithTrailers.length > 0 &&
+        currentIndex === moviesWithTrailers.length - 1;
 
     return (
         <div className="home-root" style={{ width: "100%", overflow: "hidden", position: "relative", backgroundColor: "#000" }}>
@@ -630,6 +639,10 @@ export default function Home() {
                         height: 100dvh;
                     }
 
+                    .mobile-loading-pill {
+                        display: none;
+                    }
+
                     /* Portrait phone — hide desktop-only overlays */
                     @media (max-width: 582px) {
                         .home-nav-arrows {
@@ -638,6 +651,10 @@ export default function Home() {
 
                         .home-keyboard-hint {
                             display: none !important;
+                        }
+
+                        .mobile-loading-pill {
+                            display: flex !important;
                         }
                     }
 
@@ -650,6 +667,20 @@ export default function Home() {
                         .home-keyboard-hint {
                             display: none !important;
                         }
+
+                        .mobile-loading-pill {
+                            display: flex !important;
+                        }
+                    }
+
+                    @keyframes btn-spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translate(-50%, 10px); }
+                        to { opacity: 1; transform: translate(-50%, 0); }
                     }
                 `}
             </style>
@@ -671,6 +702,69 @@ export default function Home() {
                 onGenreChange={setGenre}
                 region={region}
             />
+
+            {(initialLoading || (fetchLoading && moviesWithTrailers.length === 0)) && (
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "#000",
+                        zIndex: 999,
+                    }}
+                >
+                    <Loader />
+                </div>
+            )}
+
+            {iframeLoading && (
+                <div
+                    style={{
+                        position: "fixed",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.75)",
+                        zIndex: 998,
+                    }}
+                >
+                    <Loader />
+                </div>
+            )}
+
+            {isLazyLoadingAtEnd && (
+                <div
+                    className="mobile-loading-pill"
+                    style={{
+                        position: "fixed",
+                        bottom: "80px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        backgroundColor: "rgba(0, 0, 0, 0.75)",
+                        backdropFilter: "blur(10px)",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: "20px",
+                        padding: "8px 16px",
+                        alignItems: "center",
+                        gap: "8px",
+                        zIndex: 100,
+                        pointerEvents: "none",
+                        color: "white",
+                        fontSize: "12px",
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.5)",
+                        animation: "fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                    }}
+                >
+                    <div
+                        style={{
+                            width: "14px",
+                            height: "14px",
+                            border: "2px solid rgba(255, 255, 255, 0.3)",
+                            borderTop: "2px solid #ffffff",
+                            borderRadius: "50%",
+                            animation: "btn-spin 1s linear infinite",
+                        }}
+                    />
+                    <span>Loading more...</span>
+                </div>
+            )}
 
             <div
                 ref={containerRef}
@@ -707,6 +801,7 @@ export default function Home() {
                                     isFullscreen={isFullscreen}
                                     onFullscreenChange={setIsFullscreen}
                                     onTogglePlayPause={togglePaused}
+                                    onReady={() => handleTrailerReady(movie.id)}
                                 />
                             ) : (
                                 <div
@@ -802,9 +897,10 @@ export default function Home() {
                         </button>
                     )}
 
-                    {currentIndex < moviesWithTrailers.length - 1 && (
+                    {(currentIndex < moviesWithTrailers.length - 1 || isLazyLoadingAtEnd) && (
                         <button
                             onClick={goToNext}
+                            disabled={isLazyLoadingAtEnd}
                             style={{
                                 width: "34px",
                                 height: "34px",
@@ -814,21 +910,39 @@ export default function Home() {
                                 border: "1.5px solid rgba(255,255,255,0.3)",
                                 color: "white",
                                 fontSize: "16px",
-                                cursor: "pointer",
+                                cursor: isLazyLoadingAtEnd ? "default" : "pointer",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 transition: "all 0.3s ease",
                                 outline: "none",
+                                opacity: isLazyLoadingAtEnd ? 0.7 : 1,
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.4)";
+                                if (!isLazyLoadingAtEnd) {
+                                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.4)";
+                                }
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.2)";
+                                if (!isLazyLoadingAtEnd) {
+                                    e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.2)";
+                                }
                             }}
                         >
-                            ↓
+                            {isLazyLoadingAtEnd ? (
+                                <div
+                                    style={{
+                                        width: "16px",
+                                        height: "16px",
+                                        border: "2px solid rgba(255,255,255,0.3)",
+                                        borderTop: "2px solid #ffffff",
+                                        borderRadius: "50%",
+                                        animation: "btn-spin 1s linear infinite",
+                                    }}
+                                />
+                            ) : (
+                                "↓"
+                            )}
                         </button>
                     )}
                 </div>

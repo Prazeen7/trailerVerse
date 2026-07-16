@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
 import { ScreenOrientation } from "@capacitor/screen-orientation";
 import api from "../api/api";
-import Loader from "./TrailerLoader";
+import TrailerLoader from "./TrailerLoader";
 
 interface Props {
     movie: any;
@@ -13,6 +13,8 @@ interface Props {
     isFullscreen?: boolean;
     onFullscreenChange?: (isFullscreen: boolean) => void;
     onTogglePlayPause?: () => void;
+    onReady?: () => void;
+
 }
 
 export default function TrailerCard({
@@ -24,6 +26,8 @@ export default function TrailerCard({
     isFullscreen = false,
     onFullscreenChange,
     onTogglePlayPause,
+    onReady,
+
 }: Props) {
     const [videoKey, setVideoKey] = useState("");
     const [iframeReady, setIframeReady] = useState(false);
@@ -52,6 +56,12 @@ export default function TrailerCard({
 
         fetchTrailer();
     }, [movie.id, contentType]);
+
+    useEffect(() => {
+        setIsLoading(true);
+        setIframeReady(false);
+        setLoadError(false);
+    }, [movie.id]);
 
     const getIframeSrc = () => {
         if (!videoKey) return "";
@@ -126,6 +136,7 @@ export default function TrailerCard({
                     setTimeout(() => sendCommand("playVideo"), 100);
                     setTimeout(() => sendCommand("playVideo"), 500);
                     setTimeout(() => sendCommand("playVideo"), 1000);
+                    onReady?.()
                 }
 
                 if (data.event === "onStateChange") {
@@ -452,9 +463,9 @@ export default function TrailerCard({
                 `}
             </style>
 
-            {isLoading && isActive && <Loader />}
-
             {loadError && isActive && <ErrorFallback />}
+
+            {isLoading && !loadError && isActive && <TrailerLoader />}
 
             {videoKey && !loadError && (
                 <div
