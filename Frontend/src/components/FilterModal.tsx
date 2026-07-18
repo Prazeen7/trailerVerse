@@ -1,8 +1,14 @@
 import HorizontalFilterRow from "./HorizontalFilterRow";
+import {
+    MOVIE_GENRES,
+    TV_GENRES,
+} from "../constants/genre";
+import { COUNTRIES } from "../constants/countries";
 
 interface FilterModalProps {
     open: boolean;
     onClose: () => void;
+    onApply: () => void;
 
     contentType: "movie" | "tv";
 
@@ -15,72 +21,15 @@ interface FilterModalProps {
     onReleaseYearChange: (year?: string) => void;
     onOriginCountryChange: (country?: string) => void;
     onMinVoteAverageChange: (rating?: number) => void;
+    showReleaseYear?: boolean;
 }
-
-const MOVIE_GENRES = [
-    { id: 28, name: "Action" },
-    { id: 12, name: "Adventure" },
-    { id: 16, name: "Animation" },
-    { id: 35, name: "Comedy" },
-    { id: 80, name: "Crime" },
-    { id: 99, name: "Documentary" },
-    { id: 18, name: "Drama" },
-    { id: 10751, name: "Family" },
-    { id: 14, name: "Fantasy" },
-    { id: 36, name: "History" },
-    { id: 27, name: "Horror" },
-    { id: 10402, name: "Music" },
-    { id: 9648, name: "Mystery" },
-    { id: 10749, name: "Romance" },
-    { id: 878, name: "Science Fiction" },
-    { id: 10770, name: "TV Movie" },
-    { id: 53, name: "Thriller" },
-    { id: 10752, name: "War" },
-    { id: 37, name: "Western" },
-];
-
-const TV_GENRES = [
-    { id: 10759, name: "Action & Adventure" },
-    { id: 16, name: "Animation" },
-    { id: 35, name: "Comedy" },
-    { id: 80, name: "Crime" },
-    { id: 99, name: "Documentary" },
-    { id: 18, name: "Drama" },
-    { id: 10751, name: "Family" },
-    { id: 10762, name: "Kids" },
-    { id: 9648, name: "Mystery" },
-    { id: 10763, name: "News" },
-    { id: 10764, name: "Reality" },
-    { id: 10765, name: "Sci-Fi & Fantasy" },
-    { id: 10766, name: "Soap" },
-    { id: 10767, name: "Talk" },
-    { id: 10768, name: "War & Politics" },
-    { id: 37, name: "Western" },
-];
-
-const COUNTRIES = [
-    { code: "US", name: "United States" },
-    { code: "GB", name: "United Kingdom" },
-    { code: "CA", name: "Canada" },
-    { code: "AU", name: "Australia" },
-    { code: "IN", name: "India" },
-    { code: "JP", name: "Japan" },
-    { code: "KR", name: "South Korea" },
-    { code: "CN", name: "China" },
-    { code: "FR", name: "France" },
-    { code: "DE", name: "Germany" },
-    { code: "IT", name: "Italy" },
-    { code: "ES", name: "Spain" },
-    { code: "MX", name: "Mexico" },
-    { code: "BR", name: "Brazil" },
-    { code: "NP", name: "Nepal" },
-];
 
 const RATINGS = [9, 8, 7, 6, 5, 4, 3, 2, 1];
 
 export default function FilterModal({
     open,
     onClose,
+    onApply,
     genre,
     releaseYear,
     originCountry,
@@ -91,6 +40,7 @@ export default function FilterModal({
     onOriginCountryChange,
     onMinVoteAverageChange,
     contentType,
+    showReleaseYear
 }: FilterModalProps) {
 
     const genres =
@@ -106,6 +56,39 @@ export default function FilterModal({
         { length: currentYear - 1900 + 1 },
         (_, i) => currentYear - i
     );
+
+    const appliedFilters = [
+        genre !== undefined
+            ? {
+                label: genres.find((g) => g.id === genre)?.name ?? "Genre",
+                clear: () => onGenreChange(undefined),
+            }
+            : null,
+
+        showReleaseYear && releaseYear
+            ? {
+                label: releaseYear,
+                clear: () => onReleaseYearChange(undefined),
+            }
+            : null,
+
+        originCountry
+            ? {
+                label: originCountry,
+                clear: () => onOriginCountryChange(undefined),
+            }
+            : null,
+
+        minVoteAverage !== undefined
+            ? {
+                label: `${minVoteAverage}+`,
+                clear: () => onMinVoteAverageChange(undefined),
+            }
+            : null,
+    ].filter(Boolean) as {
+        label: string;
+        clear: () => void;
+    }[];
 
     return (
 
@@ -156,6 +139,35 @@ export default function FilterModal({
                         Filters
                     </h2>
 
+                    {appliedFilters.length > 0 && (
+                        <div
+                            style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 6,
+                                marginBottom: 12,
+                            }}
+                        >
+                            {appliedFilters.map((filter) => (
+                                <button
+                                    key={filter.label}
+                                    onClick={filter.clear}
+                                    style={{
+                                        padding: "5px 9px",
+                                        borderRadius: 999,
+                                        border: "1px solid rgba(255,255,255,.2)",
+                                        background: "rgba(255,255,255,.12)",
+                                        color: "white",
+                                        fontSize: 11,
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    {filter.label} ×
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     <section style={filterSectionStyle}>
                         <h3 style={sectionTitleStyle}>Genre</h3>
 
@@ -164,7 +176,9 @@ export default function FilterModal({
                             {genres.map((g) => (
                                 <button
                                     key={g.id}
-                                    onClick={() => onGenreChange(g.id)}
+                                    onClick={() =>
+                                        onGenreChange(genre === g.id ? undefined : g.id)
+                                    }
                                     style={buttonStyle(genre === g.id)}
                                 >
                                     {g.name}
@@ -173,7 +187,7 @@ export default function FilterModal({
                         </HorizontalFilterRow>
                     </section>
 
-                    <section style={filterSectionStyle}>
+                    {showReleaseYear && (<section style={filterSectionStyle}>
                         <h3 style={sectionTitleStyle}>Year</h3>
 
                         <HorizontalFilterRow>
@@ -187,7 +201,11 @@ export default function FilterModal({
                                         name="releaseYear"
                                         checked={releaseYear === String(year)}
                                         onChange={() =>
-                                            onReleaseYearChange(String(year))
+                                            onReleaseYearChange(
+                                                releaseYear === String(year)
+                                                    ? undefined
+                                                    : String(year)
+                                            )
                                         }
                                     />
 
@@ -195,7 +213,7 @@ export default function FilterModal({
                                 </label>
                             ))}
                         </HorizontalFilterRow>
-                    </section>
+                    </section>)}
 
                     <section style={filterSectionStyle}>
                         <h3 style={sectionTitleStyle}>Country</h3>
@@ -216,21 +234,25 @@ export default function FilterModal({
 
                             {COUNTRIES.map((country) => (
                                 <label
-                                    key={country.code}
+                                    key={country.iso_3166_1}
                                     style={radioLabelStyle}
                                 >
                                     <input
                                         type="radio"
                                         name="originCountry"
                                         checked={
-                                            originCountry === country.code
+                                            originCountry === country.iso_3166_1
                                         }
                                         onChange={() =>
-                                            onOriginCountryChange(country.code)
+                                            onOriginCountryChange(
+                                                originCountry === country.iso_3166_1
+                                                    ? undefined
+                                                    : country.iso_3166_1
+                                            )
                                         }
                                     />
 
-                                    {country.name}
+                                    {country.english_name}
                                 </label>
                             ))}
                         </HorizontalFilterRow>
@@ -250,7 +272,11 @@ export default function FilterModal({
                                         name="minVoteAverage"
                                         checked={minVoteAverage === rating}
                                         onChange={() =>
-                                            onMinVoteAverageChange(rating)
+                                            onMinVoteAverageChange(
+                                                minVoteAverage === rating
+                                                    ? undefined
+                                                    : rating
+                                            )
                                         }
                                     />
 
@@ -275,7 +301,7 @@ export default function FilterModal({
 
                         <button
                             type="button"
-                            onClick={onClose}
+                            onClick={onApply}
                             style={applyButtonStyle}
                         >
                             Apply Filters
@@ -311,22 +337,6 @@ const sectionTitleStyle: React.CSSProperties = {
     margin: "0 0 8px",
     fontSize: 14,
     fontWeight: 600,
-};
-
-const genreContainerStyle: React.CSSProperties = {
-    display: "flex",
-    gap: 8,
-    overflowX: "auto",
-    overflowY: "hidden",
-    paddingBottom: 6,
-};
-
-const inlineFilterStyle: React.CSSProperties = {
-    display: "flex",
-    gap: 16,
-    overflowX: "auto",
-    overflowY: "hidden",
-    paddingBottom: 8,
 };
 
 const radioLabelStyle: React.CSSProperties = {

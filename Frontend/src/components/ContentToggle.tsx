@@ -67,49 +67,18 @@ export default function ContentToggle({
     const isMobile = layoutMode !== "desktop";
     const isLandscape = layoutMode === "mobile-landscape";
     const isPortrait = layoutMode === "mobile-portrait";
-    const MOVIE_GENRES: Record<number, string> = {
-        28: "Action",
-        12: "Adventure",
-        16: "Animation",
-        35: "Comedy",
-        80: "Crime",
-        99: "Documentary",
-        18: "Drama",
-        10751: "Family",
-        14: "Fantasy",
-        36: "History",
-        27: "Horror",
-        10402: "Music",
-        9648: "Mystery",
-        10749: "Romance",
-        878: "Sci-Fi",
-        10770: "TV Movie",
-        53: "Thriller",
-        10752: "War",
-        37: "Western",
-    };
 
-    const TV_GENRES: Record<number, string> = {
-        10759: "Action",
-        16: "Animation",
-        35: "Comedy",
-        80: "Crime",
-        99: "Documentary",
-        18: "Drama",
-        10751: "Family",
-        10762: "Kids",
-        9648: "Mystery",
-        10763: "News",
-        10764: "Reality",
-        10765: "Sci-Fi",
-        10766: "Soap",
-        10767: "Talk",
-        10768: "War",
-        37: "Western",
-    };
+    const canUseReleaseYear =
+        filterType === "popular" ||
+        filterType === "top_rated";
 
     // Keep controls visible whenever playback is paused
     const controlsVisible = isVisible || isPaused;
+
+    const [draftGenre, setDraftGenre] = useState<number>();
+    const [draftReleaseYear, setDraftReleaseYear] = useState<string>();
+    const [draftOriginCountry, setDraftOriginCountry] = useState<string>();
+    const [draftMinVoteAverage, setDraftMinVoteAverage] = useState<number>();
 
     // Filters
     const getFilters = () => {
@@ -129,11 +98,6 @@ export default function ContentToggle({
         ];
     };
     const filters = getFilters();
-
-    const genreMap = contentType === "movie" ? MOVIE_GENRES : TV_GENRES;
-
-    const selectedGenreName =
-        genre !== undefined ? genreMap[genre] : "";
 
     // Vertical sliding indicator position for desktop column layout
     const getDesktopFilterTop = (filter: string) => {
@@ -387,58 +351,72 @@ export default function ContentToggle({
                 </button >
 
                 {/* Filter */}
-                < button
-                    className="glass-control-btn"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setShowFilterModal(true);
-                    }}
-                    title="Filter"
-                    style={glassBtn(ctrlBtnSize)}
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width={iconSize + 6}
-                        height={iconSize + 6}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="m12.296 3.464 3.02 3.956" />
-                        <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z" />
-                        <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                        <path d="m6.18 5.276 3.1 3.899" />
-                    </svg>
-                </button >
+                <div style={{ position: "relative" }}>
+                    <button
+                        className="glass-control-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
 
+                            setDraftGenre(genre);
+                            setDraftReleaseYear(releaseYear);
+                            setDraftOriginCountry(originCountry);
+                            setDraftMinVoteAverage(minVoteAverage);
 
-                {selectedGenreName && (
-                    <div
-                        onClick={() => onGenreChange(undefined)}
-                        title="Clear genre"
-                        style={{
-                            padding: isLandscape ? "4px 10px" : "6px 12px",
-                            borderRadius: 999,
-                            background: "rgba(255,255,255,0.18)",
-                            backdropFilter: "blur(20px)",
-                            WebkitBackdropFilter: "blur(20px)",
-                            border: "1px solid rgba(255,255,255,0.2)",
-                            color: "#fff",
-                            fontSize: isLandscape ? 10 : 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            whiteSpace: "nowrap",
-                            maxWidth: 120,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
+                            setShowFilterModal(true);
                         }}
+                        title="Filter"
+                        style={glassBtn(ctrlBtnSize)}
                     >
-                        {selectedGenreName} ✕
-                    </div>
-                )}
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width={iconSize + 6}
+                            height={iconSize + 6}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <path d="m12.296 3.464 3.02 3.956" />
+                            <path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2-.3 2.5 1.3z" />
+                            <path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <path d="m6.18 5.276 3.1 3.899" />
+                        </svg>
+                    </button>
+
+                    {(() => {
+                        const filterCount =
+                            Number(genre !== undefined) +
+                            Number(canUseReleaseYear && releaseYear !== undefined) +
+                            Number(originCountry !== undefined) +
+                            Number(minVoteAverage !== undefined);
+
+                        return filterCount > 0 ? (
+                            <span
+                                style={{
+                                    position: "absolute",
+                                    top: -5,
+                                    right: -5,
+                                    minWidth: 18,
+                                    height: 18,
+                                    padding: "0 4px",
+                                    borderRadius: 999,
+                                    background: "white",
+                                    color: "black",
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    border: "2px solid rgba(0,0,0,0.25)",
+                                }}
+                            >
+                                {filterCount}
+                            </span>
+                        ) : null;
+                    })()}
+                </div>
 
                 {/* Fullscreen */}
                 <button
@@ -574,16 +552,33 @@ export default function ContentToggle({
                 open={showFilterModal}
                 onClose={() => setShowFilterModal(false)}
                 contentType={contentType}
-                genre={genre}
-                releaseYear={releaseYear}
-                originCountry={originCountry}
-                minVoteAverage={minVoteAverage}
 
-                onGenreChange={onGenreChange}
-                onReleaseYearChange={onReleaseYearChange}
-                onOriginCountryChange={onOriginCountryChange}
-                onMinVoteAverageChange={onMinVoteAverageChange}
+                genre={draftGenre}
+                releaseYear={draftReleaseYear}
+                originCountry={draftOriginCountry}
+                minVoteAverage={draftMinVoteAverage}
 
+                onGenreChange={setDraftGenre}
+                onReleaseYearChange={setDraftReleaseYear}
+                onOriginCountryChange={setDraftOriginCountry}
+                onMinVoteAverageChange={setDraftMinVoteAverage}
+
+                showReleaseYear={canUseReleaseYear}
+
+                onApply={() => {
+                    onGenreChange(draftGenre);
+
+                    onReleaseYearChange(
+                        canUseReleaseYear
+                            ? draftReleaseYear
+                            : undefined
+                    );
+
+                    onOriginCountryChange(draftOriginCountry);
+                    onMinVoteAverageChange(draftMinVoteAverage);
+
+                    setShowFilterModal(false);
+                }}
             />
         </>
     );

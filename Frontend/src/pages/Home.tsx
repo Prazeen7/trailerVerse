@@ -65,17 +65,31 @@ export default function Home() {
     const getStorageKey = (
         type: "movie" | "tv",
         filter: "now_playing" | "popular" | "top_rated" | "upcoming",
-        genre?: number
-    ) => `used-pages-${type}-${filter}-${genre ?? "all"}`;
+        genre?: number,
+        releaseYear?: string,
+        originCountry?: string,
+        minVoteAverage?: number
+    ) =>
+        `used-pages-${type}-${filter}-${genre ?? "all"}-${releaseYear ?? "all"}-${originCountry ?? "all"}-${minVoteAverage ?? "all"}`;
 
     const getUsedPages = (
         type: "movie" | "tv",
         filter: "now_playing" | "popular" | "top_rated" | "upcoming",
-        genre?: number
+        genre?: number,
+        releaseYear?: string,
+        originCountry?: string,
+        minVoteAverage?: number
     ): number[] => {
         try {
             const stored = localStorage.getItem(
-                getStorageKey(type, filter, genre)
+                getStorageKey(
+                    type,
+                    filter,
+                    genre,
+                    releaseYear,
+                    originCountry,
+                    minVoteAverage
+                )
             );
 
             return stored ? JSON.parse(stored) : [];
@@ -89,17 +103,33 @@ export default function Home() {
         filter: "now_playing" | "popular" | "top_rated" | "upcoming",
         page: number,
         totalPages: number,
-        genre?: number
+        genre?: number,
+        releaseYear?: string,
+        originCountry?: string,
+        minVoteAverage?: number
     ) => {
-        const key = getStorageKey(type, filter, genre);
+        const key = getStorageKey(
+            type,
+            filter,
+            genre,
+            releaseYear,
+            originCountry,
+            minVoteAverage
+        );
 
-        let pages = getUsedPages(type, filter, genre);
+        let pages = getUsedPages(
+            type,
+            filter,
+            genre,
+            releaseYear,
+            originCountry,
+            minVoteAverage
+        );
 
         if (!pages.includes(page)) {
             pages.push(page);
         }
 
-        // Reset once we've visited every page
         if (pages.length >= totalPages) {
             pages = [page];
         }
@@ -132,7 +162,14 @@ export default function Home() {
         const signal = controller.signal;
 
         try {
-            const usedPages = getUsedPages(type, filter, genre);
+            const usedPages = getUsedPages(
+                type,
+                filter,
+                genre,
+                releaseYear,
+                originCountry,
+                minVoteAverage
+            );
             let items: any[] = [];
             if (type === "movie") {
                 setMovieLoading(true);
@@ -155,6 +192,9 @@ export default function Home() {
                         params: {
                             excludePages: usedPages.join(","),
                             genre,
+                            releaseYear,
+                            originCountry,
+                            minVoteAverage,
                         },
                     }
                 );
@@ -165,7 +205,10 @@ export default function Home() {
                     filter,
                     response.data.page,
                     response.data.total_pages,
-                    genre
+                    genre,
+                    releaseYear,
+                    originCountry,
+                    minVoteAverage
                 );
                 if (requestId !== requestIdRef.current) return;
             } else {
@@ -178,6 +221,9 @@ export default function Home() {
                         params: {
                             excludePages: usedPages.join(","),
                             genre,
+                            releaseYear,
+                            originCountry,
+                            minVoteAverage,
                         },
                     }
                 );
@@ -355,6 +401,10 @@ export default function Home() {
         moviesWithTrailers.length,
         contentType,
         filterType,
+        genre,
+        releaseYear,
+        originCountry,
+        minVoteAverage,
     ]);
 
     // Fetch when filter changes
@@ -364,7 +414,6 @@ export default function Home() {
 
         setIframeLoading(true);
 
-        // Clear existing data
         if (contentType === "movie") {
             setMovieTrailers([]);
             setMovieLoading(true);
@@ -374,7 +423,14 @@ export default function Home() {
         }
 
         fetchContent(contentType, filterType);
-    }, [filterType, contentType, genre]);
+    }, [
+        filterType,
+        contentType,
+        genre,
+        releaseYear,
+        originCountry,
+        minVoteAverage,
+    ]);
 
     const handleFilterChange = (filter: "now_playing" | "popular" | "top_rated" | "upcoming") => {
         setFilterType(filter);
