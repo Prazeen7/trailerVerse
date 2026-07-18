@@ -1,0 +1,454 @@
+.onboarding-screen {
+    position: relative;
+    min-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(
+            circle at 50% 35%,
+            rgba(255, 255, 255, 0.08),
+            transparent 35%
+        ),
+        #050505;
+    color: white;
+}
+
+.onboarding-content {
+    position: relative;
+    z-index: 2;
+    width: min(90%, 420px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/* App icon */
+
+.onboarding-icon-wrapper {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 34px;
+    animation: iconEntrance 1s cubic-bezier(0.22, 1, 0.36, 1) forwards,
+        iconFloat 5s ease-in-out 1.2s infinite;
+}
+
+.onboarding-icon {
+    position: relative;
+    z-index: 2;
+    width: 105px;
+    height: 105px;
+    object-fit: contain;
+    filter: drop-shadow(0 15px 35px rgba(255, 255, 255, 0.2));
+}
+
+.icon-glow {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    filter: blur(35px);
+    animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* Text */
+
+.onboarding-text {
+    animation: textEntrance 0.8s 0.25s cubic-bezier(0.22, 1, 0.36, 1)
+        both;
+}
+
+.onboarding-text h1 {
+    margin: 0;
+    font-size: clamp(38px, 10vw, 58px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    background: linear-gradient(
+        135deg,
+        #ffffff 0%,
+        #bdbdbd 50%,
+        #ffffff 100%
+    );
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: titleShine 5s linear infinite;
+}
+
+.onboarding-text p {
+    margin: 18px 0 0;
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+/* Button */
+
+.onboarding-button {
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+
+    width: min(100%, 280px);
+    margin-top: 42px;
+    padding: 16px 24px;
+
+    border: none;
+    border-radius: 999px;
+
+    background: white;
+    color: black;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 10px 35px rgba(255, 255, 255, 0.12),
+        0 0 0 1px rgba(255, 255, 255, 0.2);
+
+    animation: buttonEntrance 0.8s 0.5s
+        cubic-bezier(0.22, 1, 0.36, 1) both;
+
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+.onboarding-button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.7),
+        transparent
+    );
+
+    transform: skewX(-20deg);
+    animation: buttonShine 4s 1.5s infinite;
+}
+
+.onboarding-button:hover {
+    transform: translateY(-3px);
+    box-shadow:
+        0 15px 40px rgba(255, 255, 255, 0.2),
+        0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.onboarding-button:active {
+    transform: scale(0.96);
+}
+
+.onboarding-button span {
+    position: relative;
+    z-index: 1;
+}
+
+.button-arrow {
+    font-size: 20px;
+    transition: transform 0.25s ease;
+}
+
+.onboarding-button:hover .button-arrow {
+    transform: translateX(5px);
+}
+
+/* Progress dots */
+
+.onboarding-dots {
+    display: flex;
+    gap: 7px;
+    margin-top: 32px;
+    animation: fadeIn 1s 0.8s both;
+}
+
+.onboarding-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.onboarding-dots span.active {
+    width: 22px;
+    border-radius: 999px;
+    background: white;
+}
+
+/* Decorative background */
+
+.onboarding-glow {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(80px);
+    opacity: 0.12;
+}
+
+.onboarding-glow-one {
+    width: 300px;
+    height: 300px;
+    top: -120px;
+    left: -100px;
+    background: white;
+    animation: backgroundFloat 10s ease-in-out infinite;
+}
+
+.onboarding-glow-two {
+    width: 350px;
+    height: 350px;
+    right: -160px;
+    bottom: -150px;
+    background: #777;
+    animation: backgroundFloat 12s ease-in-out infinite reverse;
+}
+
+/* Animations */
+
+@keyframes iconEntrance {
+    from {
+        opacity: 0;
+        transform: scale(0.5) translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes iconFloat {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes glowPulse {
+    0%,
+    100% {
+        opacity: 0.5;
+        transform: scale(0.9);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+}
+
+@keyframes textEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(25px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes buttonEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(25px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes buttonShine {
+    0% {
+        left: -100%;
+    }
+
+    20%,
+    100% {
+        left: 150%;
+    }
+}
+
+@keyframes titleShine {
+    to {
+        background-position: 200% center;
+    }
+}
+
+@keyframes backgroundFloat {
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    50% {
+        transform: translate(30px, 20px);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Feature visual */
+
+.feature-visual {
+    min-height: 180px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 36px;
+}
+
+/* Movie / TV toggle */
+
+.mock-toggle {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+
+    box-shadow:
+        0 20px 50px rgba(0, 0, 0, 0.5),
+        inset 0 1px rgba(255, 255, 255, 0.08);
+
+    animation: visualEntrance 0.6s ease both;
+}
+
+.mock-toggle span {
+    padding: 14px 18px;
+    border-radius: 999px;
+
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.mock-toggle .selected {
+    background: white;
+    color: black;
+    box-shadow: 0 8px 25px rgba(255, 255, 255, 0.15);
+}
+
+/* Four discovery filters */
+
+.mock-filter-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: 280px;
+
+    animation: visualEntrance 0.6s ease both;
+}
+
+.mock-filter-list span {
+    padding: 18px 12px;
+
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 12px;
+
+    box-shadow:
+        0 12px 30px rgba(0, 0, 0, 0.3);
+
+    transition: 0.25s ease;
+}
+
+.mock-filter-list span:nth-child(2) {
+    background: rgba(255, 255, 255, 0.14);
+    color: white;
+}
+
+.mock-filter-list span:hover {
+    transform: translateY(-3px);
+    background: rgba(255, 255, 255, 0.16);
+}
+
+/* Advanced filters */
+
+.mock-advanced-filters {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    max-width: 300px;
+
+    animation: visualEntrance 0.6s ease both;
+}
+
+.mock-advanced-filters span {
+    padding: 12px 18px;
+
+    border-radius: 999px;
+
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 12px;
+
+    box-shadow:
+        0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.mock-advanced-filters span:nth-child(1) {
+    background: white;
+    color: black;
+}
+
+.mock-advanced-filters span:nth-child(4) {
+    background: rgba(255, 255, 255, 0.18);
+    color: white;
+}
+
+@keyframes visualEntrance {
+    from {
+        opacity: 0;
+        transform: translateY(25px) scale(0.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

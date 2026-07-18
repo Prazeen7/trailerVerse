@@ -196,23 +196,27 @@ export default function TrailerCard({
         const curr = isFullscreen;
 
         if (prev !== curr) {
-            if (curr) {
-                if (Capacitor.isNativePlatform()) {
-                    ScreenOrientation.lock({ orientation: "landscape" });
-                } else {
-                    // Request fullscreen, then lock orientation once fullscreen is active
+            if (Capacitor.isNativePlatform()) {
+                // Native mobile app
+                ScreenOrientation.lock({
+                    orientation: curr ? "landscape" : "portrait",
+                }).catch((error) => {
+                    console.warn("Orientation change failed:", error);
+                });
+            } else {
+                // Web browser
+                if (curr) {
                     requestFullscreenOn(document.documentElement)
                         .then(() => {
                             lockOrientationLandscape();
                         })
                         .catch(() => {
-                            // Fullscreen denied or not supported — try orientation anyway
                             lockOrientationLandscape();
                         });
+                } else {
+                    exitFullscreenNow();
+                    unlockOrientation();
                 }
-            } else {
-                exitFullscreenNow();
-                unlockOrientation();
             }
         }
 
@@ -511,20 +515,72 @@ export default function TrailerCard({
                         opacity: isActive ? 1 : 0,
                         transition: "opacity 0.3s ease",
                         pointerEvents: "none",
+
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
                     }}
                 >
-                    <h2 style={{
-                        color: "#ffffff",
-                        WebkitTextFillColor: "#ffffff", fontSize: "14px", fontWeight: 600, marginBottom: "2px", lineHeight: 1.3
-                    }}>
-                        {movie.title || movie.name}
-                    </h2>
-                    <p style={{ fontSize: "11px", opacity: 0.85 }}>
-                        ⭐ {movie.vote_count >= 20
-                            ? movie.vote_average.toFixed(1)
-                            : "N/A"}{" "}
-                        | {movie.release_date || movie.first_air_date}
-                    </p>
+                    {/* Poster */}
+                    {movie.poster_path && (
+                        <img
+                            src={`https://image.tmdb.org/t/p/w185${movie.poster_path}`}
+                            alt={movie.title || movie.name}
+                            style={{
+                                width: 64,
+                                height: 96,
+                                objectFit: "cover",
+                                borderRadius: 6,
+                                flexShrink: 0,
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                            }}
+                        />
+                    )}
+
+                    {/* Movie information */}
+                    <div
+                        style={{
+                            minWidth: 0,
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <h2
+                            style={{
+                                color: "#ffffff",
+                                WebkitTextFillColor: "#ffffff",
+                                fontSize: "14px",
+                                fontWeight: 600,
+                                margin: 0,
+                                marginBottom: 4,
+                                lineHeight: 1.3,
+
+                                // Prevent very long titles from breaking the layout
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                            }}
+                        >
+                            {movie.title || movie.name}
+                        </h2>
+
+                        <p
+                            style={{
+                                fontSize: "11px",
+                                opacity: 0.85,
+                                margin: 0,
+                            }}
+                        >
+                            ⭐{" "}
+                            {movie.vote_count >= 20
+                                ? movie.vote_average.toFixed(1)
+                                : "N/A"}{" "}
+                            | {movie.release_date || movie.first_air_date}
+                        </p>
+                    </div>
                 </div>
             )}
         </div>

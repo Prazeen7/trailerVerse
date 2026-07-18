@@ -582,9 +582,6 @@ export default function Home() {
             } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
                 e.preventDefault();
                 goToPrevious();
-            } else if (e.key === " " || e.key === "Space") {
-                e.preventDefault();
-                toggleSound();
             }
         };
 

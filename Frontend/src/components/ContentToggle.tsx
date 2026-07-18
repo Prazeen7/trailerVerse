@@ -213,98 +213,154 @@ export default function ContentToggle({
                 • Portrait   : top-CENTER
                 • Desktop    : top-CENTER
             ══════════════════════════════════════════════════════════════════ */}
+            {/* CONTENT TYPE TOGGLE + REGION */}
             <div
                 style={{
                     position: "fixed",
                     top: isLandscape ? 8 : isMobile ? 10 : 20,
-                    left: "50%",
-                    transform: `translateX(-50%) ${!isVisible ? "translateY(-30px)" : "translateY(0)"
-                        }`,
+                    left: 0,
+                    right: 0,
                     display: "flex",
+                    justifyContent: "center",
                     alignItems: "center",
-                    gap: 10,
                     opacity: isVisible ? 1 : 0,
                     pointerEvents: isVisible ? "auto" : "none",
                     transition:
                         "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
+                    transform: !isVisible
+                        ? "translateY(-30px)"
+                        : "translateY(0)",
                     zIndex: 1002,
                 }}
                 onMouseEnter={onActivity}
                 onMouseLeave={onActivity}
             >
-                <div style={{
-                    position: "relative",
-                    display: "flex",
-                    width: isLandscape ? 128 : isMobile ? 160 : 220,
-                    padding: isLandscape ? 2 : isMobile ? 3 : 4,
-                    borderRadius: 999,
-                    background: "rgba(255,255,255,0.15)",
-                    backdropFilter: "blur(20px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(20px) saturate(180%)",
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
-                }}>
-                    {/* Sliding pill */}
-                    <div style={{
-                        position: "absolute",
-                        top: isLandscape ? 2 : isMobile ? 3 : 4,
-                        left: contentType === "movie"
-                            ? (isLandscape ? 2 : isMobile ? 3 : 4)
-                            : "50%",
-                        width: "calc(50% - 6px)",
-                        height: `calc(100% - ${isLandscape ? 4 : isMobile ? 6 : 8}px)`,
-                        borderRadius: 999,
-                        background: "rgba(255,255,255,0.9)",
-                        backdropFilter: "blur(10px)",
-                        transition: "left 0.3s cubic-bezier(0.22,1,0.36,1)",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                    }} />
-                    {(["movie", "tv"] as const).map((t) => (
-                        <button
-                            key={t}
-                            onClick={() => onChange(t)}
-                            style={{
-                                flex: 1, zIndex: 1, border: "none", background: "transparent",
-                                padding: isLandscape ? "5px 0" : isMobile ? "8px 0" : "10px 0",
-                                cursor: "pointer", fontWeight: 600,
-                                fontSize: isLandscape ? 10 : isMobile ? 12 : 15,
-                                color: contentType === t ? "#000" : "rgba(255,255,255,0.8)",
-                                transition: "color .3s", outline: "none",
-                                WebkitTapHighlightColor: "transparent",
-                            }}
-                        >
-                            {t === "movie" ? "Movies" : "TV Shows"}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Region Flag */}
-                {region && (
+                {/* Centered group */}
+                <div
+                    style={{
+                        position: "relative",
+                        display: "flex",
+                        justifyContent: "center",
+                    }}
+                >
+                    {/* Movies / TV Shows toggle */}
                     <div
                         style={{
-                            padding: 6,
-                            borderRadius: 999,
-                            background: "rgba(255,255,255,0.18)",
-                            backdropFilter: "blur(20px)",
-                            border: "1px solid rgba(255,255,255,0.2)",
+                            position: "relative",
                             display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            flexShrink: 0,
+                            width: isLandscape ? 128 : isMobile ? 160 : 220,
+                            padding: isLandscape ? 2 : isMobile ? 3 : 4,
+                            borderRadius: 999,
+                            background: "rgba(255,255,255,0.15)",
+                            backdropFilter: "blur(20px) saturate(180%)",
+                            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                            border: "1px solid rgba(255,255,255,0.2)",
+                            boxShadow:
+                                "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
                         }}
                     >
-                        <img
-                            src={`https://flagcdn.com/${region.toLowerCase()}.svg`}
-                            alt={region}
-                            width={20}
-                            height={15}
+                        {/* Sliding pill */}
+                        <div
                             style={{
-                                display: "block",
-                                borderRadius: 2,
+                                position: "absolute",
+                                top: isLandscape ? 2 : isMobile ? 3 : 4,
+                                left:
+                                    contentType === "movie"
+                                        ? isLandscape
+                                            ? 2
+                                            : isMobile
+                                                ? 3
+                                                : 4
+                                        : "50%",
+                                width: "calc(50% - 6px)",
+                                height: `calc(100% - ${isLandscape ? 4 : isMobile ? 6 : 8
+                                    }px)`,
+                                borderRadius: 999,
+                                background: "rgba(255,255,255,0.9)",
+                                transition:
+                                    "left 0.3s cubic-bezier(0.22,1,0.36,1)",
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                             }}
                         />
+
+                        {(["movie", "tv"] as const).map((t) => (
+                            <button
+                                key={t}
+                                onClick={() => onChange(t)}
+                                style={{
+                                    flex: 1,
+                                    zIndex: 1,
+                                    border: "none",
+                                    background: "transparent",
+                                    padding: isLandscape
+                                        ? "5px 0"
+                                        : isMobile
+                                            ? "8px 0"
+                                            : "10px 0",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                    fontSize: isLandscape
+                                        ? 10
+                                        : isMobile
+                                            ? 12
+                                            : 15,
+                                    color:
+                                        contentType === t
+                                            ? "#000"
+                                            : "rgba(255,255,255,0.8)",
+                                    transition: "color .3s",
+                                    outline: "none",
+                                    WebkitTapHighlightColor: "transparent",
+                                }}
+                            >
+                                {t === "movie" ? "Movies" : "TV Shows"}
+                            </button>
+                        ))}
                     </div>
-                )}
+
+                    {/* Region flag follows the centered toggle */}
+                    {region && (
+                        <div
+                            style={{
+                                position: "absolute",
+                                left: "calc(100% + 8px)",
+                                top: "50%",
+                                transform: "translateY(-50%)",
+
+                                width: isLandscape ? 30 : 38,
+                                height: isLandscape ? 30 : 38,
+                                borderRadius: "50%",
+
+                                background: "rgba(255,255,255,0.18)",
+                                backdropFilter: "blur(20px)",
+                                WebkitBackdropFilter: "blur(20px)",
+
+                                border: "1px solid rgba(255,255,255,0.2)",
+
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+
+                                flexShrink: 0,
+
+                                boxShadow:
+                                    "0 8px 24px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.18)",
+                            }}
+                        >
+                            <img
+                                src={`https://flagcdn.com/${region.toLowerCase()}.svg`}
+                                alt={region}
+                                width={isLandscape ? 16 : 20}
+                                height={isLandscape ? 12 : 15}
+                                style={{
+                                    display: "block",
+                                    borderRadius: 2,
+                                    objectFit: "contain",
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
 
@@ -341,15 +397,47 @@ export default function ContentToggle({
                             : <svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="white"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
                     }
                 </button >
-
                 {/* Mute */}
-                < button
+                <button
                     className="glass-control-btn"
-                    onClick={(e) => { e.stopPropagation(); onToggleMute(); }}
-                    style={{ ...glassBtn(ctrlBtnSize), fontSize: isLandscape ? 13 : 18 }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleMute();
+                    }}
+                    style={glassBtn(ctrlBtnSize)}
                 >
-                    {isMuted ? "🔇" : "🔊"}
-                </button >
+                    {isMuted ? (
+                        <svg
+                            width={iconSize}
+                            height={iconSize}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                            <line x1="23" y1="9" x2="17" y2="15" />
+                            <line x1="17" y1="9" x2="23" y2="15" />
+                        </svg>
+                    ) : (
+                        <svg
+                            width={iconSize}
+                            height={iconSize}
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                        </svg>
+                    )}
+                </button>
 
                 {/* Filter */}
                 <div style={{ position: "relative" }}>

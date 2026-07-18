@@ -1,4 +1,5 @@
 import HorizontalFilterRow from "./HorizontalFilterRow";
+import { useState } from "react";
 import {
     MOVIE_GENRES,
     TV_GENRES,
@@ -44,6 +45,10 @@ export default function FilterModal({
     contentType,
     showReleaseYear
 }: FilterModalProps) {
+
+    const [genreSearch, setGenreSearch] = useState("");
+    const [yearSearch, setYearSearch] = useState("");
+    const [countrySearch, setCountrySearch] = useState("");
 
     const genres =
         contentType === "movie"
@@ -91,6 +96,20 @@ export default function FilterModal({
         label: string;
         clear: () => void;
     }[];
+
+    const filteredGenres = genres.filter((genre) =>
+        genre.name.toLowerCase().includes(genreSearch.toLowerCase())
+    );
+
+    const filteredYears = years.filter((year) =>
+        String(year).includes(yearSearch)
+    );
+
+    const filteredCountries = COUNTRIES.filter((country) =>
+        country.english_name
+            .toLowerCase()
+            .includes(countrySearch.toLowerCase())
+    );
 
     return (
 
@@ -171,15 +190,28 @@ export default function FilterModal({
                     )}
 
                     <section style={filterSectionStyle}>
-                        <h3 style={sectionTitleStyle}>Genre</h3>
+                        <div style={sectionHeaderStyle}>
+                            <h3 style={{ ...sectionTitleStyle, margin: 0 }}>
+                                Genre
+                            </h3>
+
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={genreSearch}
+                                onChange={(e) => setGenreSearch(e.target.value)}
+                                style={searchInputStyle}
+                            />
+                        </div>
 
                         <HorizontalFilterRow>
-
-                            {genres.map((g) => (
+                            {filteredGenres.map((g) => (
                                 <button
                                     key={g.id}
                                     onClick={() =>
-                                        onGenreChange(genre === g.id ? undefined : g.id)
+                                        onGenreChange(
+                                            genre === g.id ? undefined : g.id
+                                        )
                                     }
                                     style={buttonStyle(genre === g.id)}
                                 >
@@ -189,36 +221,63 @@ export default function FilterModal({
                         </HorizontalFilterRow>
                     </section>
 
-                    {showReleaseYear && (<section style={filterSectionStyle}>
-                        <h3 style={sectionTitleStyle}>Year</h3>
+                    {showReleaseYear && (
+                        <section style={filterSectionStyle}>
 
-                        <HorizontalFilterRow>
-                            {years.map((year) => (
-                                <label
-                                    key={year}
-                                    style={radioLabelStyle}
-                                >
-                                    <input
-                                        type="radio"
-                                        name="releaseYear"
-                                        checked={releaseYear === String(year)}
-                                        onChange={() =>
-                                            onReleaseYearChange(
-                                                releaseYear === String(year)
-                                                    ? undefined
-                                                    : String(year)
-                                            )
-                                        }
-                                    />
+                            <div style={sectionHeaderStyle}>
+                                <h3 style={{ ...sectionTitleStyle, margin: 0 }}>
+                                    Year
+                                </h3>
 
-                                    {year}
-                                </label>
-                            ))}
-                        </HorizontalFilterRow>
-                    </section>)}
+                                <input
+                                    type="text"
+                                    placeholder="Search..."
+                                    value={yearSearch}
+                                    onChange={(e) => setYearSearch(e.target.value)}
+                                    style={searchInputStyle}
+                                />
+                            </div>
+
+                            <HorizontalFilterRow>
+                                {filteredYears.map((year) => (
+                                    <label
+                                        key={year}
+                                        style={radioLabelStyle}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="releaseYear"
+                                            checked={releaseYear === String(year)}
+                                            onChange={() =>
+                                                onReleaseYearChange(
+                                                    releaseYear === String(year)
+                                                        ? undefined
+                                                        : String(year)
+                                                )
+                                            }
+                                        />
+
+                                        {year}
+                                    </label>
+                                ))}
+                            </HorizontalFilterRow>
+                        </section>
+                    )}
 
                     <section style={filterSectionStyle}>
-                        <h3 style={sectionTitleStyle}>Country</h3>
+                        <div style={sectionHeaderStyle}>
+                            <h3 style={{ ...sectionTitleStyle, margin: 0 }}>
+                                Country
+                            </h3>
+
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={countrySearch}
+                                onChange={(e) => setCountrySearch(e.target.value)}
+                                style={searchInputStyle}
+                            />
+                        </div>
 
                         <HorizontalFilterRow>
                             <label style={radioLabelStyle}>
@@ -234,7 +293,7 @@ export default function FilterModal({
                                 All Countries
                             </label>
 
-                            {COUNTRIES.map((country) => (
+                            {filteredCountries.map((country) => (
                                 <label
                                     key={country.iso_3166_1}
                                     style={radioLabelStyle}
@@ -347,8 +406,11 @@ const radioLabelStyle: React.CSSProperties = {
 };
 
 const filterSectionStyle: React.CSSProperties = {
-    padding: "12px 0",
-    borderBottom: "1px solid rgba(255,255,255,.1)",
+    padding: "14px",
+    marginBottom: 10,
+    borderRadius: 14,
+    background: "rgba(255,255,255,.06)",
+    border: "1px solid rgba(255,255,255,.1)",
 };
 
 const actionButtonsStyle: React.CSSProperties = {
@@ -396,4 +458,25 @@ const closeButtonStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+};
+
+const searchInputStyle: React.CSSProperties = {
+    width: 150,
+    padding: "6px 9px",
+    borderRadius: 8,
+    border: "1px solid rgba(255,255,255,.15)",
+    background: "rgba(255,255,255,.08)",
+    color: "white",
+    outline: "none",
+    fontSize: 11,
+};
+
+const sectionHeaderStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingBottom: 10,
+    marginBottom: 10,
+    borderBottom: "1px solid rgba(255,255,255,.12)",
 };
