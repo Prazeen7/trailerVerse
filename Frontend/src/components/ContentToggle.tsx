@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import GenreModal from "./GenreModal";
+import GenreModal from "./FilterModal";
 
 interface ContentToggleProps {
     contentType: "movie" | "tv";
@@ -15,7 +15,13 @@ interface ContentToggleProps {
     isVisible: boolean;
     onActivity: () => void;
     genre?: number;
+    releaseYear?: string;
+    originCountry?: string;
+    minVoteAverage?: number;
     onGenreChange: (genre?: number) => void;
+    onReleaseYearChange: (year?: string) => void;
+    onOriginCountryChange: (country?: string) => void;
+    onMinVoteAverageChange: (rating?: number) => void;
     region?: string;
 }
 
@@ -43,14 +49,20 @@ export default function ContentToggle({
     isVisible,
     onActivity,
     genre,
+    releaseYear,
+    originCountry,
+    minVoteAverage,
     onGenreChange,
+    onReleaseYearChange,
+    onOriginCountryChange,
+    onMinVoteAverageChange,
     region
 }: ContentToggleProps) {
     const [layoutMode, setLayoutMode] = useState<"desktop" | "mobile-portrait" | "mobile-landscape">(getLayoutMode);
     const filterContainerRef = useRef<HTMLDivElement>(null);
     const [buttonWidths, setButtonWidths] = useState<number[]>([]);
     const resizeTimeoutRef = useRef<number | null>(null);
-    const [showGenreModal, setShowGenreModal] = useState(false);
+    const [showFilterModal, setShowFilterModal] = useState(false);
 
     const isMobile = layoutMode !== "desktop";
     const isLandscape = layoutMode === "mobile-landscape";
@@ -374,14 +386,14 @@ export default function ContentToggle({
                     {isMuted ? "🔇" : "🔊"}
                 </button >
 
-                {/* Genre */}
+                {/* Filter */}
                 < button
                     className="glass-control-btn"
                     onClick={(e) => {
                         e.stopPropagation();
-                        setShowGenreModal(true);
+                        setShowFilterModal(true);
                     }}
-                    title="Genres"
+                    title="Filter"
                     style={glassBtn(ctrlBtnSize)}
                 >
                     <svg
@@ -559,11 +571,19 @@ export default function ContentToggle({
                 </div>
             </div >
             <GenreModal
-                open={showGenreModal}
-                onClose={() => setShowGenreModal(false)}
-                selectedGenre={genre}
-                onSelect={onGenreChange}
+                open={showFilterModal}
+                onClose={() => setShowFilterModal(false)}
                 contentType={contentType}
+                genre={genre}
+                releaseYear={releaseYear}
+                originCountry={originCountry}
+                minVoteAverage={minVoteAverage}
+
+                onGenreChange={onGenreChange}
+                onReleaseYearChange={onReleaseYearChange}
+                onOriginCountryChange={onOriginCountryChange}
+                onMinVoteAverageChange={onMinVoteAverageChange}
+
             />
         </>
     );

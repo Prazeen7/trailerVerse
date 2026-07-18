@@ -1,17 +1,58 @@
 import { Request, Response } from 'express';
 import { getTrendingMovies, getPopularMovies, getNowPlayingMovies, getUpcomingMovies, getTopRatedMovies } from '../services/movieService';
 import { getRegionFromIp } from '../services/locationService';
+import { DiscoverFilters } from '../utils/discoverFilters';
 
+// Filter query
+const getFilters = (req: Request, region: string | undefined): DiscoverFilters => ({
+    genre:
+        typeof req.query.genre === "string"
+            ? req.query.genre
+            : undefined,
 
-export const fetchTrendingMovies = async (
-    req: Request,
-    res: Response
-): Promise<void> => {
+    releaseYear:
+        typeof req.query.releaseYear === "string"
+            ? req.query.releaseYear
+            : undefined,
+
+    originCountry:
+        typeof req.query.originCountry === "string"
+            ? req.query.originCountry
+            : undefined,
+
+    minVoteAverage:
+        typeof req.query.minVoteAverage === "string"
+            ? req.query.minVoteAverage
+            : undefined,
+
+    region,
+});
+
+// exclude used pages
+const getExcludePages = (req: Request): number[] =>
+    typeof req.query.excludePages === "string"
+        ? req.query.excludePages
+            .split(",")
+            .map(Number)
+            .filter(Number.isFinite)
+        : [];
+
+// Abort TMDB request if the client disconnects
+const createAbortController = (req: Request) => {
     const controller = new AbortController();
 
     req.on("close", () => {
         controller.abort();
     });
+
+    return controller;
+};
+
+export const fetchTrendingMovies = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const controller = createAbortController(req);
     try {
         const movies = await getTrendingMovies(controller.signal);
 
@@ -41,30 +82,16 @@ export const fetchPopularMovies = async (
     res: Response
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
+    const filters = getFilters(req, region);
 
-    const genre =
-        typeof req.query.genre === "string"
-            ? req.query.genre
-            : undefined;
+    const excludePages = getExcludePages(req);
 
-    const excludePages: number[] =
-        typeof req.query.excludePages === "string"
-            ? req.query.excludePages
-                .split(",")
-                .map(Number)
-                .filter(Number.isFinite)
-            : [];
-
-    const controller = new AbortController();
-    req.on("close", () => {
-        controller.abort();
-    });
+    const controller = createAbortController(req);
     try {
         const movies = await getPopularMovies(
             excludePages,
             controller.signal,
-            genre,
-            region
+            filters
         );
 
         if (!res.headersSent) {
@@ -96,29 +123,16 @@ export const fetchNowPlayingMovies = async (
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
 
-    const genre =
-        typeof req.query.genre === "string"
-            ? req.query.genre
-            : undefined;
+    const filters = getFilters(req, region);
 
-    const excludePages: number[] =
-        typeof req.query.excludePages === "string"
-            ? req.query.excludePages
-                .split(",")
-                .map(Number)
-                .filter(Number.isFinite)
-            : [];
+    const excludePages = getExcludePages(req);
 
-    const controller = new AbortController();
-    req.on("close", () => {
-        controller.abort();
-    });
+    const controller = createAbortController(req);
     try {
         const movies = await getNowPlayingMovies(
             excludePages,
             controller.signal,
-            genre,
-            region
+            filters
         );
 
         if (!res.headersSent) {
@@ -149,29 +163,15 @@ export const fetchUpcomingMovies = async (
     res: Response
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
-    const genre =
-        typeof req.query.genre === "string"
-            ? req.query.genre
-            : undefined;
+    const filters = getFilters(req, region);
+    const excludePages = getExcludePages(req);
 
-    const excludePages: number[] =
-        typeof req.query.excludePages === "string"
-            ? req.query.excludePages
-                .split(",")
-                .map(Number)
-                .filter(Number.isFinite)
-            : [];
-
-    const controller = new AbortController();
-    req.on("close", () => {
-        controller.abort();
-    });
+    const controller = createAbortController(req);
     try {
         const movies = await getUpcomingMovies(
             excludePages,
             controller.signal,
-            genre,
-            region
+            filters
         );
         if (!res.headersSent) {
             res.status(200).json({
@@ -201,28 +201,16 @@ export const fetchTopRatedMovies = async (
     res: Response
 ): Promise<void> => {
     const region = await getRegionFromIp(req.ip);
-    const genre =
-        typeof req.query.genre === "string"
-            ? req.query.genre
-            : undefined;
+    const filters = getFilters(req, region);
 
-    const excludePages: number[] =
-        typeof req.query.excludePages === "string"
-            ? req.query.excludePages
-                .split(",")
-                .map(Number)
-                .filter(Number.isFinite)
-            : [];
+    const excludePages = getExcludePages(req);
 
-    const controller = new AbortController();
-    req.on("close", () => {
-        controller.abort();
-    });
+    const controller = createAbortController(req);
     try {
-        const movies = await getTopRatedMovies(excludePages,
+        const movies = await getTopRatedMovies(
+            excludePages,
             controller.signal,
-            genre,
-            region
+            filters
         );
 
         if (!res.headersSent) {

@@ -36,12 +36,15 @@ export default function Home() {
     const switchingRef = useRef(false);
     const requestIdRef = useRef(0);
     const fetchControllerRef = useRef<AbortController | null>(null);
-    const [genre, setGenre] = useState<number | undefined>(undefined);
     const [region, setRegion] = useState<string>();
     const [initialLoading, setInitialLoading] = useState(true);
-    const [fetchLoading, setFetchLoading] = useState(false);   // API requests
+    const [fetchLoading, setFetchLoading] = useState(false);
     const trailerTimeoutRef = useRef<number | null>(null);
     const [iframeLoading, setIframeLoading] = useState(false);
+    const [genre, setGenre] = useState<number>();
+    const [releaseYear, setReleaseYear] = useState<string>();
+    const [originCountry, setOriginCountry] = useState<string>();
+    const [minVoteAverage, setMinVoteAverage] = useState<number>();
 
     const currentIndex =
         contentType === "movie"
@@ -580,7 +583,15 @@ export default function Home() {
                     isVisible={isVisible}
                     onActivity={showUIControls}
                     genre={genre}
+                    releaseYear={releaseYear}
+                    originCountry={originCountry}
+                    minVoteAverage={minVoteAverage}
+
                     onGenreChange={setGenre}
+                    onReleaseYearChange={setReleaseYear}
+                    onOriginCountryChange={setOriginCountry}
+                    onMinVoteAverageChange={setMinVoteAverage}
+
                     region={region}
                 />
 
@@ -699,7 +710,13 @@ export default function Home() {
                 isVisible={isVisible}
                 onActivity={showUIControls}
                 genre={genre}
+                releaseYear={releaseYear}
+                originCountry={originCountry}
+                minVoteAverage={minVoteAverage}
                 onGenreChange={setGenre}
+                onReleaseYearChange={setReleaseYear}
+                onOriginCountryChange={setOriginCountry}
+                onMinVoteAverageChange={setMinVoteAverage}
                 region={region}
             />
 

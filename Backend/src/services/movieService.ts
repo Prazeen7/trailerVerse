@@ -1,9 +1,9 @@
 import tmdb from "../config/tmdb";
+import { DiscoverFilters } from "../utils/discoverFilters";
 
 interface RandomPageOptions {
     excludePages?: number[];
     signal?: AbortSignal;
-    genre?: string;
 }
 
 export const buildDiscoverEndpoint = (
@@ -13,22 +13,38 @@ export const buildDiscoverEndpoint = (
         | "upcoming"
         | "now_playing"
         | "/tv/popular"
-        | "/tv/airing_today"
-        | "/tv/on_the_air"
         | "/tv/top_rated",
-    genre?: string,
-    region?: string
+    filters?: DiscoverFilters
 ) => {
     const params = new URLSearchParams();
 
     const isTV = filter.startsWith("/tv/");
 
-    if (!isTV && region) {
-        params.set("region", region);
+    if (!isTV && filters?.region) {
+        params.set("region", filters.region);
     }
 
-    if (genre) {
-        params.set("with_genres", genre);
+    if (filters?.genre) {
+        params.set("with_genres", filters.genre);
+    }
+
+    // Year
+    if (filters?.releaseYear) {
+        if (isTV) {
+            params.set("first_air_date_year", filters.releaseYear);
+        } else {
+            params.set("primary_release_year", filters.releaseYear);
+        }
+    }
+
+    // Country
+    if (filters?.originCountry) {
+        params.set("with_origin_country", filters.originCountry);
+    }
+
+    // Rating
+    if (filters?.minVoteAverage) {
+        params.set("vote_average.gte", filters.minVoteAverage);
     }
 
     if (isTV) {
@@ -40,14 +56,6 @@ export const buildDiscoverEndpoint = (
             case "/tv/top_rated":
                 params.set("sort_by", "vote_average.desc");
                 params.set("vote_count.gte", "100");
-                break;
-
-            case "/tv/on_the_air":
-                params.set("sort_by", "popularity.desc");
-                break;
-
-            case "/tv/airing_today":
-                params.set("sort_by", "popularity.desc");
                 break;
         }
 
@@ -116,7 +124,6 @@ export const getRandomPageData = async (
     const {
         excludePages = [],
         signal,
-        genre,
     } = options ?? {};
 
     let cached = endpointCache.get(endpoint);
@@ -153,14 +160,6 @@ export const getRandomPageData = async (
 
     let results = response.data.results;
 
-    if (genre) {
-        const genreId = Number(genre);
-
-        results = results.filter((item: any) =>
-            item.genre_ids.includes(genreId)
-        );
-    }
-
     return {
         ...response.data,
         page: selectedPage,
@@ -170,7 +169,7 @@ export const getRandomPageData = async (
 
 export const getRandomFilteredTVData = async (
     endpoint: string,
-    genre: string,
+    filters?: DiscoverFilters,
     options?: RandomPageOptions
 ) => {
     const {
@@ -233,9 +232,39 @@ export const getRandomFilteredTVData = async (
 
         lastResponse = response;
 
-        const filtered = response.data.results.filter((show: any) =>
-            show.genre_ids?.includes(Number(genre))
-        );
+
+        const filtered = response.data.results.filter((show: any) => {
+            if (
+                filters?.genre &&
+                !show.genre_ids?.includes(Number(filters.genre))
+            ) {
+                return false;
+            }
+
+            if (filters?.releaseYear) {
+                const year = show.first_air_date?.split("-")[0];
+
+                if (year !== filters.releaseYear) {
+                    return false;
+                }
+            }
+
+            if (
+                filters?.originCountry &&
+                !show.origin_country?.includes(filters.originCountry)
+            ) {
+                return false;
+            }
+
+            if (
+                filters?.minVoteAverage &&
+                show.vote_average < Number(filters.minVoteAverage)
+            ) {
+                return false;
+            }
+
+            return true;
+        });
 
         for (const show of filtered) {
             collected.set(show.id, show);
@@ -266,11 +295,10 @@ export const getTrendingMovies = async (signal?: AbortSignal) => {
 export const getPopularMovies = (
     excludePages: number[] = [],
     signal?: AbortSignal,
-    genre?: string,
-    region?: string
+    filters?: DiscoverFilters
 ) => {
     return getRandomPageData(
-        buildDiscoverEndpoint("popular", genre, region),
+        buildDiscoverEndpoint("popular", filters),
         {
             excludePages,
             signal,
@@ -281,11 +309,10 @@ export const getPopularMovies = (
 export const getTopRatedMovies = (
     excludePages: number[] = [],
     signal?: AbortSignal,
-    genre?: string,
-    region?: string
+    filters?: DiscoverFilters
 ) => {
     return getRandomPageData(
-        buildDiscoverEndpoint("top_rated", genre, region),
+        buildDiscoverEndpoint("top_rated", filters),
         {
             excludePages,
             signal,
@@ -296,11 +323,10 @@ export const getTopRatedMovies = (
 export const getUpcomingMovies = (
     excludePages: number[] = [],
     signal?: AbortSignal,
-    genre?: string,
-    region?: string
+    filters?: DiscoverFilters
 ) => {
     return getRandomPageData(
-        buildDiscoverEndpoint("upcoming", genre, region),
+        buildDiscoverEndpoint("upcoming", filters),
         {
             excludePages,
             signal,
@@ -311,11 +337,10 @@ export const getUpcomingMovies = (
 export const getNowPlayingMovies = (
     excludePages: number[] = [],
     signal?: AbortSignal,
-    genre?: string,
-    region?: string
+    filters?: DiscoverFilters
 ) => {
     return getRandomPageData(
-        buildDiscoverEndpoint("now_playing", genre, region),
+        buildDiscoverEndpoint("now_playing", filters),
         {
             excludePages,
             signal,
