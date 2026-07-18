@@ -9,6 +9,7 @@ interface FilterModalProps {
     open: boolean;
     onClose: () => void;
     onApply: () => void;
+    onClear: () => void;
 
     contentType: "movie" | "tv";
 
@@ -30,6 +31,7 @@ export default function FilterModal({
     open,
     onClose,
     onApply,
+    onClear,
     genre,
     releaseYear,
     originCountry,
@@ -288,12 +290,7 @@ export default function FilterModal({
                     <div style={actionButtonsStyle}>
                         <button
                             type="button"
-                            onClick={() => {
-                                onGenreChange(undefined);
-                                onReleaseYearChange(undefined);
-                                onOriginCountryChange(undefined);
-                                onMinVoteAverageChange(undefined);
-                            }}
+                            onClick={onClear}
                             style={clearButtonStyle}
                         >
                             Clear Filters

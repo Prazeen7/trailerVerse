@@ -45,6 +45,7 @@ export const buildDiscoverEndpoint = (
     // Rating
     if (filters?.minVoteAverage) {
         params.set("vote_average.gte", filters.minVoteAverage);
+        params.set("vote_count.gte", "20");
     }
 
     if (isTV) {
