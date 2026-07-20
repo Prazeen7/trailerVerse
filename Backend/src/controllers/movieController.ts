@@ -3,6 +3,18 @@ import { getTrendingMovies, getPopularMovies, getNowPlayingMovies, getUpcomingMo
 import { getRegionFromIp } from '../services/locationService';
 import { DiscoverFilters } from '../utils/discoverFilters';
 
+const getRegion = async (
+    req: Request
+): Promise<string | undefined> => {
+    // 1. User-selected region has priority
+    if (typeof req.query.region === "string") {
+        return req.query.region;
+    }
+
+    // 2. Otherwise detect region from IP
+    return getRegionFromIp(req.ip);
+};
+
 // Filter query
 const getFilters = (req: Request, region: string | undefined): DiscoverFilters => ({
     genre:
@@ -81,7 +93,7 @@ export const fetchPopularMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
-    const region = await getRegionFromIp(req.ip);
+    const region = await getRegion(req);
     const filters = getFilters(req, region);
 
     const excludePages = getExcludePages(req);
@@ -121,7 +133,7 @@ export const fetchNowPlayingMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
-    const region = await getRegionFromIp(req.ip);
+    const region = await getRegion(req);
 
     const filters = getFilters(req, region);
 
@@ -162,7 +174,7 @@ export const fetchUpcomingMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
-    const region = await getRegionFromIp(req.ip);
+    const region = await getRegion(req);
     const filters = getFilters(req, region);
     const excludePages = getExcludePages(req);
 
@@ -200,7 +212,7 @@ export const fetchTopRatedMovies = async (
     req: Request,
     res: Response
 ): Promise<void> => {
-    const region = await getRegionFromIp(req.ip);
+    const region = await getRegion(req);
     const filters = getFilters(req, region);
 
     const excludePages = getExcludePages(req);

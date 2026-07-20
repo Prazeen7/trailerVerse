@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import GenreModal from "./FilterModal";
 import FilterIcon from '../assets/filter.png'
+import { COUNTRIES } from "../constants/countries";
 
 interface ContentToggleProps {
     contentType: "movie" | "tv";
@@ -13,8 +14,8 @@ interface ContentToggleProps {
     onTogglePlayPause: () => void;
     isFullscreen: boolean;
     onToggleFullscreen: () => void;
-    isVisible: boolean;
-    onActivity: () => void;
+    isUIVisible: boolean;
+    onToggleUI: () => void;
     genre?: number;
     releaseYear?: string;
     originCountry?: string;
@@ -24,6 +25,7 @@ interface ContentToggleProps {
     onOriginCountryChange: (country?: string) => void;
     onMinVoteAverageChange: (rating?: number) => void;
     region?: string;
+    onRegionChange: (region: string) => void;
 }
 
 /** Determine layout mode from live viewport size. */
@@ -47,8 +49,8 @@ export default function ContentToggle({
     onTogglePlayPause,
     isFullscreen,
     onToggleFullscreen,
-    isVisible,
-    onActivity,
+    isUIVisible,
+    onToggleUI,
     genre,
     releaseYear,
     originCountry,
@@ -57,25 +59,35 @@ export default function ContentToggle({
     onReleaseYearChange,
     onOriginCountryChange,
     onMinVoteAverageChange,
-    region
+    region,
+    onRegionChange,
 }: ContentToggleProps) {
     const [layoutMode, setLayoutMode] = useState<"desktop" | "mobile-portrait" | "mobile-landscape">(getLayoutMode);
     const filterContainerRef = useRef<HTMLDivElement>(null);
     const [buttonWidths, setButtonWidths] = useState<number[]>([]);
     const resizeTimeoutRef = useRef<number | null>(null);
     const [showFilterModal, setShowFilterModal] = useState(false);
+    const [showRegionDropdown, setShowRegionDropdown] = useState(false);
+    const [regionSearch, setRegionSearch] = useState("");
 
     const isMobile = layoutMode !== "desktop";
     const isLandscape = layoutMode === "mobile-landscape";
     const isPortrait = layoutMode === "mobile-portrait";
+
+    const selectedRegion = COUNTRIES.find(
+        item => item.iso_3166_1 === region
+    );
+
+    const filteredRegions = COUNTRIES.filter(item =>
+        item.english_name.toLowerCase().includes(regionSearch.toLowerCase()) ||
+        item.iso_3166_1.toLowerCase().includes(regionSearch.toLowerCase())
+    );
 
     const canUseReleaseYear =
         filterType === "popular" ||
         filterType === "top_rated";
 
     // Keep controls visible whenever playback is paused
-    const controlsVisible = isVisible || isPaused;
-
     const [draftGenre, setDraftGenre] = useState<number>();
     const [draftReleaseYear, setDraftReleaseYear] = useState<string>();
     const [draftOriginCountry, setDraftOriginCountry] = useState<string>();
@@ -157,8 +169,8 @@ export default function ContentToggle({
     }, []);
 
     // Size tokens
-    const ctrlBtnSize = isLandscape ? 30 : isMobile ? 40 : 44;
-    const iconSize = isLandscape ? 11 : isMobile ? 16 : 16;
+    const ctrlBtnSize = isLandscape ? 30 : isMobile ? 34 : 44;
+    const iconSize = isLandscape ? 11 : isMobile ? 13 : 16;
     const filterFont = isLandscape ? 9 : isPortrait ? 10 : 14;
     const filterPad = isLandscape ? "4px 9px" : isPortrait ? "6px 8px" : "10px 16px";
     const filterBtnH = isPortrait ? "auto" : isLandscape ? "auto" : 46;
@@ -187,10 +199,10 @@ export default function ContentToggle({
             ? "translateX(0)"
             : "translateY(0)";
 
-    const vis = (show: string, hide: string) => ({
-        transform: controlsVisible ? show : hide,
-        opacity: controlsVisible ? 1 : 0,
-        pointerEvents: (controlsVisible ? "auto" : "none") as React.CSSProperties["pointerEvents"],
+    const vis = (show: string, hide: string): React.CSSProperties => ({
+        transform: isUIVisible ? show : hide,
+        opacity: isUIVisible ? 1 : 0,
+        pointerEvents: isUIVisible ? "auto" : "none",
         transition:
             "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
     });
@@ -207,6 +219,75 @@ export default function ContentToggle({
                 button::-moz-focus-inner { border: 0 !important; }
             `}</style>
 
+            {/* UI VISIBILITY TOGGLE */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleUI();
+                }}
+                title={isUIVisible ? "Hide controls" : "Show controls"}
+                style={{
+                    position: "fixed",
+                    top: isLandscape ? 6 : isMobile ? 8 : 20,
+                    right: isLandscape ? 6 : isMobile ? 8 : 20,
+
+                    width: isLandscape ? 28 : isMobile ? 34 : 44,
+                    height: isLandscape ? 28 : isMobile ? 34 : 44,
+
+                    borderRadius: "50%",
+
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+
+                    background: "rgba(255,255,255,0.12)",
+                    backdropFilter: "blur(24px) saturate(180%)",
+                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
+
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    boxShadow:
+                        "0 8px 24px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.18)",
+
+                    cursor: "pointer",
+                    zIndex: 3000,
+                    color: "white",
+                }}
+            >
+                {isUIVisible ? (
+                    // Eye open
+                    <svg
+                        width={iconSize}
+                        height={iconSize}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                ) : (
+                    // Eye closed
+                    <svg
+                        width={iconSize}
+                        height={iconSize}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M3 3l18 18" />
+                        <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+                        <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-3.1 4.4" />
+                        <path d="M6.6 6.6C3.6 8.5 2 12 2 12s3 8 10 8a10.8 10.8 0 0 0 2.1-.2" />
+                    </svg>
+                )}
+            </button>
+
             {/* ══════════════════════════════════════════════════════════════════
                 CONTENT TYPE TOGGLE
                 • Landscape  : top-LEFT  (no translateX centering)
@@ -214,28 +295,257 @@ export default function ContentToggle({
                 • Desktop    : top-CENTER
             ══════════════════════════════════════════════════════════════════ */}
             {/* CONTENT TYPE TOGGLE + REGION */}
+            {/* TOP NAVIGATION BAR */}
             <div
                 style={{
                     position: "fixed",
                     top: isLandscape ? 8 : isMobile ? 10 : 20,
                     left: 0,
                     right: 0,
+
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
-                    opacity: isVisible ? 1 : 0,
-                    pointerEvents: isVisible ? "auto" : "none",
-                    transition:
-                        "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
-                    transform: !isVisible
+
+                    opacity: isUIVisible ? 1 : 0,
+                    pointerEvents: isUIVisible ? "auto" : "none",
+
+                    transform: !isUIVisible
                         ? "translateY(-30px)"
                         : "translateY(0)",
+
+                    transition:
+                        "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
+
                     zIndex: 1002,
                 }}
-                onMouseEnter={onActivity}
-                onMouseLeave={onActivity}
             >
-                {/* Centered group */}
+                {/* LEFT — REGION */}
+                <div
+                    style={{
+                        position: "absolute",
+                        left: isLandscape ? 8 : isMobile ? 8 : 20,
+                        display: "flex",
+                        justifyContent: "flex-start",
+                    }}
+                >
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowRegionDropdown(prev => !prev);
+                        }}
+                        style={{
+                            height: isLandscape ? 28 : isMobile ? 30 : 36,
+                            minWidth: isLandscape ? 28 : isMobile ? 30 : 36,
+
+                            padding: isLandscape
+                                ? "0 6px"
+                                : isMobile
+                                    ? "0 8px"
+                                    : "0 10px",
+
+                            borderRadius: 999,
+
+                            background: "rgba(255,255,255,0.12)",
+                            backdropFilter: "blur(20px) saturate(180%)",
+                            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+
+                            border: "1px solid rgba(255,255,255,0.18)",
+
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 6,
+
+                            cursor: "pointer",
+
+                            boxShadow:
+                                "0 8px 24px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.18)",
+
+                            color: "white",
+                            whiteSpace: "nowrap",
+                        }}
+                    >
+                        {selectedRegion ? (
+                            <>
+                                <img
+                                    src={`https://flagcdn.com/${selectedRegion.iso_3166_1.toLowerCase()}.svg`}
+                                    alt={selectedRegion.english_name}
+                                    width={isMobile ? 18 : 20}
+                                    height={isMobile ? 13 : 15}
+                                    style={{
+                                        display: "block",
+                                        borderRadius: 2,
+                                        objectFit: "contain",
+                                    }}
+                                />
+
+                                {!isMobile && (
+                                    <span
+                                        style={{
+                                            fontWeight: 500,
+                                            fontSize: 11,
+                                            maxWidth: 120,
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                        }}
+                                    >
+                                        {selectedRegion.english_name}
+                                    </span>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <svg
+                                    width={isLandscape ? 16 : isMobile ? 17 : 20}
+                                    height={isLandscape ? 16 : isMobile ? 17 : 20}
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="white"
+                                    strokeWidth="1.8"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <circle cx="12" cy="12" r="9" />
+                                    <line x1="3" y1="12" x2="21" y2="12" />
+                                    <path d="M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-6.5-3.5-9S9.5 5.5 12 3z" />
+                                </svg>
+
+                                {!isMobile && (
+                                    <span
+                                        style={{
+                                            fontWeight: 500,
+                                            fontSize: 11,
+                                            maxWidth: 120,
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                        }}
+                                    >
+                                        Worldwide
+                                    </span>
+                                )}
+                            </>
+                        )}
+                    </button>
+
+                    {/* REGION DROPDOWN */}
+                    {showRegionDropdown && (
+                        <div
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                                position: "absolute",
+                                top: "calc(100% + 10px)",
+                                left: 0,
+
+                                width: 260,
+                                maxHeight: 360,
+                                padding: 10,
+
+                                borderRadius: 16,
+
+                                background: "rgba(20,20,20,0.92)",
+                                backdropFilter: "blur(24px)",
+                                WebkitBackdropFilter: "blur(24px)",
+
+                                border: "1px solid rgba(255,255,255,0.15)",
+                                boxShadow: "0 12px 40px rgba(0,0,0,0.5)",
+
+                                zIndex: 2000,
+                            }}
+                        >
+                            <input
+                                value={regionSearch}
+                                onChange={(e) => setRegionSearch(e.target.value)}
+                                placeholder="Search region..."
+                                autoFocus
+                                style={{
+                                    width: "100%",
+                                    boxSizing: "border-box",
+
+                                    padding: "10px 12px",
+
+                                    borderRadius: 10,
+                                    border: "1px solid rgba(255,255,255,0.15)",
+
+                                    background: "rgba(255,255,255,0.1)",
+                                    color: "white",
+
+                                    outline: "none",
+                                    marginBottom: 8,
+                                }}
+                            />
+
+                            <div
+                                style={{
+                                    maxHeight: 290,
+                                    overflowY: "auto",
+                                }}
+                            >
+                                {filteredRegions.map((item) => {
+                                    const isSelected =
+                                        item.iso_3166_1 === region;
+
+                                    return (
+                                        <button
+                                            key={item.iso_3166_1}
+                                            onClick={() => {
+                                                onRegionChange(item.iso_3166_1);
+                                                setShowRegionDropdown(false);
+                                                setRegionSearch("");
+                                            }}
+                                            style={{
+                                                width: "100%",
+
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 12,
+
+                                                padding: 10,
+
+                                                border: "none",
+                                                borderRadius: 10,
+
+                                                background: isSelected
+                                                    ? "rgba(255,255,255,0.18)"
+                                                    : "transparent",
+
+                                                color: "white",
+                                                cursor: "pointer",
+                                                textAlign: "left",
+                                            }}
+                                        >
+                                            <img
+                                                src={`https://flagcdn.com/${item.iso_3166_1.toLowerCase()}.svg`}
+                                                alt={item.english_name}
+                                                width={24}
+                                                height={16}
+                                                style={{
+                                                    borderRadius: 2,
+                                                    objectFit: "contain",
+                                                }}
+                                            />
+
+                                            <span style={{ flex: 1 }}>
+                                                {item.english_name}
+                                            </span>
+
+                                            <span
+                                                style={{
+                                                    fontSize: 11,
+                                                    opacity: 0.5,
+                                                }}
+                                            >
+                                                {item.iso_3166_1}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* CENTER — MOVIES / TV SHOWS */}
                 <div
                     style={{
                         position: "relative",
@@ -243,18 +553,31 @@ export default function ContentToggle({
                         justifyContent: "center",
                     }}
                 >
-                    {/* Movies / TV Shows toggle */}
                     <div
                         style={{
                             position: "relative",
                             display: "flex",
-                            width: isLandscape ? 128 : isMobile ? 160 : 220,
-                            padding: isLandscape ? 2 : isMobile ? 3 : 4,
+
+                            width: isLandscape
+                                ? 112
+                                : isMobile
+                                    ? 136
+                                    : 220,
+
+                            padding: isLandscape
+                                ? 2
+                                : isMobile
+                                    ? 2
+                                    : 4,
+
                             borderRadius: 999,
+
                             background: "rgba(255,255,255,0.15)",
                             backdropFilter: "blur(20px) saturate(180%)",
                             WebkitBackdropFilter: "blur(20px) saturate(180%)",
+
                             border: "1px solid rgba(255,255,255,0.2)",
+
                             boxShadow:
                                 "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
                         }}
@@ -263,7 +586,13 @@ export default function ContentToggle({
                         <div
                             style={{
                                 position: "absolute",
-                                top: isLandscape ? 2 : isMobile ? 3 : 4,
+
+                                top: isLandscape
+                                    ? 2
+                                    : isMobile
+                                        ? 3
+                                        : 4,
+
                                 left:
                                     contentType === "movie"
                                         ? isLandscape
@@ -272,14 +601,25 @@ export default function ContentToggle({
                                                 ? 3
                                                 : 4
                                         : "50%",
+
                                 width: "calc(50% - 6px)",
-                                height: `calc(100% - ${isLandscape ? 4 : isMobile ? 6 : 8
+
+                                height: `calc(100% - ${isLandscape
+                                    ? 4
+                                    : isMobile
+                                        ? 6
+                                        : 8
                                     }px)`,
+
                                 borderRadius: 999,
+
                                 background: "rgba(255,255,255,0.9)",
+
                                 transition:
                                     "left 0.3s cubic-bezier(0.22,1,0.36,1)",
-                                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+
+                                boxShadow:
+                                    "0 2px 8px rgba(0,0,0,0.15)",
                             }}
                         />
 
@@ -290,77 +630,41 @@ export default function ContentToggle({
                                 style={{
                                     flex: 1,
                                     zIndex: 1,
+
                                     border: "none",
                                     background: "transparent",
+
                                     padding: isLandscape
-                                        ? "5px 0"
+                                        ? "4px 0"
                                         : isMobile
-                                            ? "8px 0"
+                                            ? "6px 0"
                                             : "10px 0",
+
                                     cursor: "pointer",
+
                                     fontWeight: 600,
+
                                     fontSize: isLandscape
-                                        ? 10
+                                        ? 9
                                         : isMobile
-                                            ? 12
+                                            ? 9
                                             : 15,
+
                                     color:
                                         contentType === t
                                             ? "#000"
                                             : "rgba(255,255,255,0.8)",
+
                                     transition: "color .3s",
-                                    outline: "none",
-                                    WebkitTapHighlightColor: "transparent",
                                 }}
                             >
                                 {t === "movie" ? "Movies" : "TV Shows"}
                             </button>
                         ))}
                     </div>
-
-                    {/* Region flag follows the centered toggle */}
-                    {region && (
-                        <div
-                            style={{
-                                position: "absolute",
-                                left: "calc(100% + 8px)",
-                                top: "50%",
-                                transform: "translateY(-50%)",
-
-                                width: isLandscape ? 30 : 38,
-                                height: isLandscape ? 30 : 38,
-                                borderRadius: "50%",
-
-                                background: "rgba(255,255,255,0.18)",
-                                backdropFilter: "blur(20px)",
-                                WebkitBackdropFilter: "blur(20px)",
-
-                                border: "1px solid rgba(255,255,255,0.2)",
-
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-
-                                flexShrink: 0,
-
-                                boxShadow:
-                                    "0 8px 24px rgba(0,0,0,0.18), inset 0 1px 1px rgba(255,255,255,0.18)",
-                            }}
-                        >
-                            <img
-                                src={`https://flagcdn.com/${region.toLowerCase()}.svg`}
-                                alt={region}
-                                width={isLandscape ? 16 : 20}
-                                height={isLandscape ? 12 : 15}
-                                style={{
-                                    display: "block",
-                                    borderRadius: 2,
-                                    objectFit: "contain",
-                                }}
-                            />
-                        </div>
-                    )}
                 </div>
+
+
             </div>
 
 

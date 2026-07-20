@@ -29,10 +29,8 @@ export default function Home() {
     const [movieLoading, setMovieLoading] = useState(true);
     const [tvLoading, setTvLoading] = useState(true);
     const [isPaused, setIsPaused] = useState(false);
-    const isPausedRef = useRef(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isVisible, setIsVisible] = useState(true);
-    const inactivityTimeoutRef = useRef<number | null>(null);
+    const [isUIVisible, setIsUIVisible] = useState(true);
     const switchingRef = useRef(false);
     const requestIdRef = useRef(0);
     const fetchControllerRef = useRef<AbortController | null>(null);
@@ -192,6 +190,7 @@ export default function Home() {
                         params: {
                             excludePages: usedPages.join(","),
                             genre,
+                            region,
                             releaseYear,
                             originCountry,
                             minVoteAverage,
@@ -327,52 +326,6 @@ export default function Home() {
         };
     }, []);
 
-    // ── UI visibility / inactivity timer (shared across all overlays) ──────────
-
-    // Keep isPausedRef in sync so stale closures (event listeners) read live value
-    useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
-
-    const showUIControls = () => {
-        setIsVisible(true);
-        if (inactivityTimeoutRef.current) {
-            clearTimeout(inactivityTimeoutRef.current);
-            inactivityTimeoutRef.current = null;
-        }
-        // Read the ref — not the closed-over state — so this is always current
-        if (!isPausedRef.current) {
-            inactivityTimeoutRef.current = window.setTimeout(() => {
-                setIsVisible(false);
-            }, 3000);
-        }
-    };
-
-    useEffect(() => {
-        const events = ['mousemove', 'mousedown', 'click', 'scroll', 'keydown', 'touchstart'] as const;
-        events.forEach(ev => document.addEventListener(ev, showUIControls));
-        inactivityTimeoutRef.current = window.setTimeout(() => setIsVisible(false), 3000);
-        return () => {
-            events.forEach(ev => document.removeEventListener(ev, showUIControls));
-            if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
-        };
-    }, []);
-
-    // Pin controls visible while paused; restart countdown when resumed
-    useEffect(() => {
-        if (isPaused) {
-            if (inactivityTimeoutRef.current) {
-                clearTimeout(inactivityTimeoutRef.current);
-                inactivityTimeoutRef.current = null;
-            }
-            setIsVisible(true);
-        } else {
-            // Resumed — give 3 s before hiding
-            if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
-            inactivityTimeoutRef.current = window.setTimeout(() => {
-                setIsVisible(false);
-            }, 3000);
-        }
-    }, [isPaused]);
-
     const PREFETCH_THRESHOLD =
         genre !== undefined ? 10 : 5;
 
@@ -402,6 +355,7 @@ export default function Home() {
         contentType,
         filterType,
         genre,
+        region,
         releaseYear,
         originCountry,
         minVoteAverage,
@@ -427,6 +381,7 @@ export default function Home() {
         filterType,
         contentType,
         genre,
+        region,
         releaseYear,
         originCountry,
         minVoteAverage,
@@ -633,8 +588,8 @@ export default function Home() {
                     onTogglePlayPause={togglePaused}
                     isFullscreen={isFullscreen}
                     onToggleFullscreen={toggleFullscreen}
-                    isVisible={isVisible}
-                    onActivity={showUIControls}
+                    isUIVisible={isUIVisible}
+                    onToggleUI={() => setIsUIVisible(prev => !prev)}
                     genre={genre}
                     releaseYear={releaseYear}
                     originCountry={originCountry}
@@ -646,6 +601,7 @@ export default function Home() {
                     onMinVoteAverageChange={setMinVoteAverage}
 
                     region={region}
+                    onRegionChange={setRegion}
                 />
 
                 <div
@@ -760,8 +716,8 @@ export default function Home() {
                 onTogglePlayPause={togglePaused}
                 isFullscreen={isFullscreen}
                 onToggleFullscreen={toggleFullscreen}
-                isVisible={isVisible}
-                onActivity={showUIControls}
+                isUIVisible={isUIVisible}
+                onToggleUI={() => setIsUIVisible(prev => !prev)}
                 genre={genre}
                 releaseYear={releaseYear}
                 originCountry={originCountry}
@@ -771,6 +727,7 @@ export default function Home() {
                 onOriginCountryChange={setOriginCountry}
                 onMinVoteAverageChange={setMinVoteAverage}
                 region={region}
+                onRegionChange={setRegion}
             />
 
             {(initialLoading || (fetchLoading && moviesWithTrailers.length === 0)) && (
@@ -927,13 +884,13 @@ export default function Home() {
                         position: "fixed",
                         right: 14,
                         top: "50%",
-                        transform: `translateY(-50%) ${!isVisible ? 'translateX(80px)' : 'translateX(0)'}`,
+                        transform: `translateY(-50%) ${!isUIVisible ? 'translateX(80px)' : 'translateX(0)'}`,
                         zIndex: 20,
                         display: "flex",
                         flexDirection: "column",
                         gap: "8px",
-                        opacity: isVisible ? 1 : 0,
-                        pointerEvents: isVisible ? "auto" : "none",
+                        opacity: isUIVisible ? 1 : 0,
+                        pointerEvents: isUIVisible ? "auto" : "none",
                         transition: "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
                     }}
                 >
@@ -1026,14 +983,14 @@ export default function Home() {
                         position: "fixed",
                         bottom: 10,
                         left: "50%",
-                        transform: `translateX(-50%) ${!isVisible ? 'translateY(30px)' : 'translateY(0)'}`,
+                        transform: `translateX(-50%) ${!isUIVisible ? 'translateY(30px)' : 'translateY(0)'}`,
                         color: "rgba(255,255,255,0.5)",
                         fontSize: "10px",
                         zIndex: 10,
                         textShadow: "1px 1px 2px rgba(0,0,0,0.8)",
                         textAlign: "center",
                         pointerEvents: "none",
-                        opacity: isVisible ? 1 : 0,
+                        opacity: isUIVisible ? 1 : 0,
                         transition: "opacity 0.3s ease, transform 0.4s cubic-bezier(0.22,1,0.36,1)",
                     }}
                 >

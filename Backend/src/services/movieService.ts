@@ -24,6 +24,7 @@ export const buildDiscoverEndpoint = (
         params.set("region", filters.region);
     }
 
+
     if (filters?.genre) {
         params.set("with_genres", filters.genre);
     }
@@ -74,21 +75,25 @@ export const buildDiscoverEndpoint = (
     switch (filter) {
         case "popular":
             params.set("sort_by", "popularity.desc");
+            params.set("with_release_type", "2|3|4");
             break;
 
         case "top_rated":
             params.set("sort_by", "vote_average.desc");
+            params.set("with_release_type", "2|3|4");
             params.set("vote_count.gte", "1000");
             break;
 
         case "upcoming":
-            params.set("primary_release_date.gte", todayStr);
+            params.set("release_date.gte", todayStr);
+            params.set("with_release_type", "2|3|4");
             params.set("sort_by", "popularity.desc");
             break;
 
         case "now_playing":
-            params.set("primary_release_date.lte", todayStr);
-            params.set("primary_release_date.gte", monthAgoStr);
+            params.set("release_date.lte", todayStr);
+            params.set("release_date.gte", monthAgoStr);
+            params.set("with_release_type", "2|3|4");
             params.set("sort_by", "popularity.desc");
             break;
     }
