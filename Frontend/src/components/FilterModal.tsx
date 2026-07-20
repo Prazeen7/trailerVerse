@@ -267,7 +267,7 @@ export default function FilterModal({
                     <section style={filterSectionStyle}>
                         <div style={sectionHeaderStyle}>
                             <h3 style={{ ...sectionTitleStyle, margin: 0 }}>
-                                Country
+                                Origin Country
                             </h3>
 
                             <input
